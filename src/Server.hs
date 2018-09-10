@@ -84,6 +84,6 @@ mkApp sqliteFile = do
     return $ app pool
 
 -- | Run application with given file as database
-run :: FilePath -> IO ()
-run sqliteFile =
-    Warp.run 3000 =<< mkApp sqliteFile
+run :: FilePath -> Int -> IO ()
+run sqliteFile portNum =
+    Warp.run portNum =<< mkApp sqliteFile

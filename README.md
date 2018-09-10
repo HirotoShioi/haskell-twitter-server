@@ -4,16 +4,19 @@ Twitter server written in Haskell. This is for studying purposes.
 
 ## TODO
 
-- [ ] Use [lens](http://hackage.haskell.org/package/lens)
+- [ ] Define Config datatype
 - [ ] Create User datatype
-- [ ] Authentication (Read [here](https://haskell-servant.readthedocs.io/en/stable/tutorial/Authentication.html))
+- [ ] Validation (Username length, tweet length, etc)
+- [ ] Use [lens](http://hackage.haskell.org/package/lens)
+- [ ] Lookup Twitter API (Read [here](https://developer.twitter.com/))
+- [ ] Migrate to postgreSQL (Read [here](https://www.yesodweb.com/book/persistent#persistent_something_besides_sqlite))
 - [ ] Create frontend with [elm](https://elm-lang.org/)
-- [ ] Search API
+- [ ] User docker for postgresSQL
+- [ ] Authentication (Read [here](https://haskell-servant.readthedocs.io/en/stable/tutorial/Authentication.html))
 - [ ] Overall more data (User has only username,,)
 - [ ] Favorite
-- [ ] Pagination API
+- [ ] Follow/Unfollow
 - [ ] Test cases
 - [ ] More endpoints!
-- [ ] Validation (Username length, tweet length, etc)
-- [ ] Migrate to postgresSql
-
+- [ ] Search API
+- [ ] Pagination API

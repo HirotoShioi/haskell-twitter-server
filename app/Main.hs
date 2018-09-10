@@ -1,8 +1,12 @@
 module Main where
 
-import RIO
+import           RIO
 
-import Server (run)
+import           Say
+import           Server (run)
 
 main :: IO ()
-main = run "sqlite.db"
+main = do
+    let portNumber = 3000
+    say $ "Running server on port: " <> tshow portNumber
+    run "sqlite.db" portNumber
