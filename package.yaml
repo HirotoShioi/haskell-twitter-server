@@ -1,0 +1,79 @@
+name:                twitter-server
+version:             0.1.0.0
+github:              "HirotoShioi/twitter-server"
+license:             BSD3
+author:              "Hiroto Shioi"
+maintainer:          "shioihigg@gmail.com"
+copyright:           "MIT"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            simple
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/HirotoShioi/twitter-server#readme>
+
+dependencies:
+- aeson
+- base >= 4.7 && < 5
+- monad-logger
+- rio
+- QuickCheck
+- persistent
+- persistent-sqlite
+- persistent-template
+- safe-exceptions
+- say
+- servant-server
+- string-conversions
+- warp
+
+ghc-options:
+- -Wall
+
+default-extensions:
+- NoImplicitPrelude
+- ScopedTypeVariables
+- OverloadedStrings
+- LambdaCase
+- EmptyCase
+- TypeApplications
+- GeneralizedNewtypeDeriving
+- EmptyDataDecls
+- FlexibleContexts
+- FlexibleInstances
+- GADTs
+- MultiParamTypeClasses 
+- QuasiQuotes
+- TypeFamilies
+
+library:
+  source-dirs: src
+
+executables:
+  twitter-server-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - twitter-server
+
+tests:
+  twitter-server-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - twitter-server
