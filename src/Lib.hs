@@ -44,7 +44,7 @@ dbTweetToTweet (Entity tid dbt) = do
             return Tweet
                 { tId        = fromSqlKey tid
                 , tContent   = Content $ dBTweetContent dbt
-                , tAuthor      = UserName $ dBUserName user
+                , tAuthor    = UserName $ dBUserName user
                 , tCreatedAt = dBTweetCreatedAt dbt
                 , tReplyTo   = fromSqlKey <$> dBTweetReplyTo dbt
                 , tReplies   = replies
@@ -74,12 +74,14 @@ getUserByNameDB name = do
 -- IO Logic
 --------------------------------------------------------------------------------
 
+-- | Get all tweets
 getAllTweets :: ConnectionPool -> IO [Tweet]
 getAllTweets pool =
     flip runSqlPersistMPool pool $ do
         dbtweets <- selectList [DBTweetReplyTo ==. Nothing] defaultTweetSelectOpt
         mapM dbTweetToTweet dbtweets
 
+-- | Get tweets with username
 getTweetsByUser :: ConnectionPool -> UserName -> IO [Tweet]
 getTweetsByUser pool username =
     flip runSqlPersistMPool pool $ do
@@ -94,10 +96,13 @@ getTweetsByUser pool username =
                     defaultTweetSelectOpt
                 mapM dbTweetToTweet dbts
 
+-- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
 getTweetById pool tweetId =
     flip runSqlPersistMPool pool $ getTweetByIdDB tweetId
 
+-- | Insert a tweet
+-- if it's an reply tweet, you'll need to provide the parent id with (Maybe Int64)
 insertTweet :: ConnectionPool -> UserName -> Content -> Maybe Int64 -> IO Tweet
 insertTweet pool name content mReplyToInt = do
     let mReplyTo = toSqlKey <$> mReplyToInt
@@ -118,6 +123,7 @@ insertTweet pool name content mReplyToInt = do
                     else throwM $ ParentTweetNotFound parentId
         dbTweetToTweet edbt
 
+-- | Insert an user
 insertUser :: ConnectionPool -> UserName -> IO DBUser
 insertUser pool name = do
     let userName = getUserName name
@@ -129,6 +135,7 @@ insertUser pool name = do
                 eUser <- insertEntity $ DBUser userName
                 return $ entityVal eUser
 
+-- | Get most recent tweetId
 getLatestTweetId :: ConnectionPool -> IO (Maybe Int64)
 getLatestTweetId pool =
     flip runSqlPersistMPool pool $ do
