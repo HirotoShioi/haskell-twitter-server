@@ -87,7 +87,11 @@ getTweetsByUser pool username =
         case eUserId of
             Left (_ :: TwitterException) -> return []
             Right userId -> do
-                dbts <- selectList [DBTweetAuthorId ==. userId] defaultTweetSelectOpt
+                dbts <- selectList
+                    [ DBTweetAuthorId ==. userId
+                    , DBTweetReplyTo  ==. Nothing
+                    ]
+                    defaultTweetSelectOpt
                 mapM dbTweetToTweet dbts
 
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet

@@ -1,6 +1,6 @@
 # twitter-server in Haskell
 
-Twitter server written in Haskell. This is for studying Haskell.
+Twitter server written in Haskell. This is for studying purposes.
 
 ## TODO
 
