@@ -62,6 +62,10 @@ data Tweet = Tweet
     } deriving (Show)
 
 -- (TODO) Create User type
+data User = User
+    { uName           :: !UserName
+    , uNumberOfTweets :: !Int
+    } deriving Show
 
 --------------------------------------------------------------------------------
 -- TypeClasses
@@ -79,10 +83,12 @@ instance ToJSON Tweet where
                 ]
         in object ["tweet" .= tweetObj]
 
-instance ToJSON DBUser where
-    toJSON DBUser{..} =
+instance ToJSON User where
+    toJSON User{..} =
         let userObj = object
-                [ "username" .= dBUserName]
+                [ "username"       .= getUserName uName
+                , "numberOfTweets" .= uNumberOfTweets
+                ]
         in object ["user" .= userObj]
 
 --------------------------------------------------------------------------------
@@ -133,6 +139,13 @@ instance Arbitrary Tweet where
         tReplies   <- vectorOf listLen arbitrary
 
         pure Tweet{..}
+
+instance Arbitrary User where
+    arbitrary = do
+        uName <- elements testUserList
+        uNumberOfTweets <- arbitrary
+
+        pure User{..}
 
 testUserList :: [UserName]
 testUserList = map UserName
