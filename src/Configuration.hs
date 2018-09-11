@@ -11,7 +11,8 @@ data Config = Config {
      , cfgDevelopmentDBPath :: !FilePath
      , cfgPortNumber        :: !PortNumber
      , cfgTweetLength       :: !Int
-     , cfgUserNameLength    :: !Int
+     , cfgUserNameMinLength :: !Int
+     , cfgUserNameMaxLength    :: !Int
      , cfgServerName        :: !Text
      }
 
@@ -23,6 +24,7 @@ defaultConfig = Config {
     , cfgDevelopmentDBPath = "sqlite.db"
     , cfgPortNumber        = 3000
     , cfgTweetLength       = 140
-    , cfgUserNameLength    = 20
+    , cfgUserNameMinLength = 3
+    , cfgUserNameMaxLength = 20
     , cfgServerName        = "Haskell Twitter server"
     }

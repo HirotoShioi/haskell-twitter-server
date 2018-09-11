@@ -18,6 +18,8 @@ import           Servant                 (FromHttpApiData (..))
 import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
                                           vectorOf)
 
+import           Configuration           (Config (..))
+
 -- | Database Schema
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 DBUser

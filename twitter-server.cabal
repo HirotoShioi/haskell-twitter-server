@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 26d725999c68dfc02c086480f98e32730dff483925b14f98e8690218cde02a90
+-- hash: 82e54f610499f023a91dfd71f8d266951cf0d8649b684a97cb89bc4801c7139f
 
 name:           twitter-server
 version:        0.1.0.0
@@ -34,6 +34,7 @@ library
       Model
       Server
       Util
+      Validation
   other-modules:
       Paths_twitter_server
   hs-source-dirs:
