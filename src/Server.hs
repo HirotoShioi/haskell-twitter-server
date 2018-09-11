@@ -92,5 +92,5 @@ runServer :: IO ()
 runServer = do
     let Config{..} = defaultConfig
     say $ "Starting " <> cfgServerName <> " on port " <> tshow cfgPortNumber
-    application <- mkApp cfgDBPath
+    application <- mkApp cfgDevelopmentDBPath
     Warp.run cfgPortNumber application

@@ -4,6 +4,7 @@
 module Generator
     ( tweetRandomly
     , insertUsers
+    , insertRandomDataIntoEmptyDB
     ) where
 
 import           RIO
@@ -11,14 +12,17 @@ import           RIO
 import           Control.Monad.Logger    (runStderrLoggingT)
 import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
+import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
                                           vectorOf)
-import           Say                     (say)
 
 import           Lib                     (getLatestTweetId, insertTweet,
                                           insertUser)
-import           Model                   (Tweet (..), UserName (..))
+
+import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
+import           Model                   (Tweet (..), UserName (..),
+                                          testUserList)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -81,3 +85,9 @@ ignoreException = handle handleException
     handleException e = do
         say $ tshow e
         return ()
+
+insertRandomDataIntoEmptyDB :: Config -> IO ()
+insertRandomDataIntoEmptyDB cfg = do
+    insertUsers (cfgDevelopmentDBPath cfg) testUserList
+    tweetRandomly (cfgDevelopmentDBPath cfg) 100
+
