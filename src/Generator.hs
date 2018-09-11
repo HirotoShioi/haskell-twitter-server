@@ -70,12 +70,12 @@ mkRandomTweet = do
     return $ randomTweet { tReplyTo = Nothing, tReplies = []}
 
 -- | Insert Users into given databse
-insertUsers :: FilePath -> [UserName] -> IO ()
-insertUsers sqliteFile users = do
-    pool <- runStderrLoggingT $ createSqlitePool (cs sqliteFile) 5
+insertUsers :: Config -> [UserName] -> IO ()
+insertUsers config users = do
+    pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
 
     forM_ users $ \user ->
-        ignoreException $ void $ insertUser pool user
+        ignoreException $ void $ insertUser pool config user
 
 -- | Exception handling for generator
 ignoreException :: IO () -> IO ()
@@ -88,6 +88,6 @@ ignoreException = handle handleException
 
 insertRandomDataIntoEmptyDB :: Config -> IO ()
 insertRandomDataIntoEmptyDB cfg = do
-    insertUsers (cfgDevelopmentDBPath cfg) testUserList
+    insertUsers cfg testUserList
     tweetRandomly (cfgDevelopmentDBPath cfg) 100
 
