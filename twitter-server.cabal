@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2775f4e9413fa5bec47df162998f95ee946b5cf5e6fe58e5343e5b79fe45495c
+-- hash: 26d725999c68dfc02c086480f98e32730dff483925b14f98e8690218cde02a90
 
 name:           twitter-server
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 library
   exposed-modules:
       Api
+      Configuration
       Exceptions
       Generator
       Lib

@@ -1,7 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Server
-    ( Server.run
+    ( Server.runServer
     ) where
 
 import           RIO
@@ -17,9 +18,12 @@ import           Database.Persist.Sqlite  (ConnectionPool, createSqlitePool,
 
 import           Network.Wai.Handler.Warp as Warp
 
+import           Say                      (say)
 import           Servant                  as S
 
 import           Api                      (Api, api)
+import           Configuration            (Config(..), defaultConfig)
+
 import           Exceptions               (TwitterException (..))
 import           Lib                      (getAllTweets, getTweetById,
                                            getTweetsByUser, insertUser)
@@ -84,6 +88,9 @@ mkApp sqliteFile = do
     return $ app pool
 
 -- | Run application with given file as database
-run :: FilePath -> Int -> IO ()
-run sqliteFile portNum =
-    Warp.run portNum =<< mkApp sqliteFile
+runServer :: IO ()
+runServer = do
+    let Config{..} = defaultConfig
+    say $ "Starting " <> cfgServerName <> " on port " <> tshow cfgPortNumber
+    application <- mkApp cfgDBPath
+    Warp.run cfgPortNumber application
