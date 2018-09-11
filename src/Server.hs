@@ -1,5 +1,5 @@
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Server
     ( Server.runServer
@@ -22,18 +22,20 @@ import           Say                      (say)
 import           Servant                  as S
 
 import           Api                      (Api, api)
-import           Configuration            (Config(..), defaultConfig)
+import           Configuration            (Config (..), defaultConfig)
 
 import           Exceptions               (TwitterException (..))
 import           Lib                      (getAllTweets, getTweetById,
-                                           getTweetsByUser, insertUser)
-import           Model                    (DBUser (..), Tweet (..),
-                                           UserName (..), migrateAll)
+                                           getTweetsByUser, getUserByName,
+                                           insertUser)
+import           Model                    (Tweet (..), User (..), UserName (..),
+                                           migrateAll)
 
 -- | Server endpoints
 server :: ConnectionPool -> Server Api
 server pool = getAllTweetsH pool
     :<|> getTweetsByUserH pool
+    :<|> getUserProfileH pool
     :<|> createUserH pool
     :<|> getTweetByIdH pool
 
@@ -49,8 +51,12 @@ getAllTweetsH pool = liftIO $ getAllTweets pool
 getTweetsByUserH :: ConnectionPool -> UserName -> S.Handler [Tweet]
 getTweetsByUserH pool userName = liftIO $ getTweetsByUser pool userName
 
+-- | Get user profile
+getUserProfileH :: ConnectionPool -> UserName -> S.Handler User
+getUserProfileH pool userName = liftIO $ getUserByName pool userName
+
 -- | Create user with given UserName
-createUserH :: ConnectionPool -> UserName -> S.Handler DBUser
+createUserH :: ConnectionPool -> UserName -> S.Handler User
 createUserH pool userName = do
     eResult <- liftIO $ C.try $ insertUser pool userName
     handleTwitterException eResult

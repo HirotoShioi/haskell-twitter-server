@@ -10,12 +10,13 @@ import           RIO
 
 import           Servant
 
-import           Model (Tweet, DBUser, UserName)
+import           Model (Tweet, User, UserName)
 
 type Api =
          "api" :> "tweets" :> Get '[JSON] [Tweet]
-    :<|> "api" :> "user"   :> Capture "user" UserName :> Get '[JSON] [Tweet]
-    :<|> "api" :> "user"   :> Capture "user" UserName :> Post '[JSON] DBUser
+    :<|> "api" :> "user"   :> "tweets"  :> Capture "user" UserName :> Get '[JSON] [Tweet]
+    :<|> "api" :> "user"   :> "profile" :> Capture "user" UserName :> Get '[JSON] User
+    :<|> "api" :> "user"   :> Capture "user" UserName :> Post '[JSON] User
     :<|> "api" :> "tweet"  :> Capture "id" Int64 :> Get '[JSON] Tweet
 
 api :: Proxy Api

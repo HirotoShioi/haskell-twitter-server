@@ -4,6 +4,7 @@ module Lib
     ( getAllTweets
     , getTweetsByUser
     , getTweetById
+    , getUserByName
     , getLatestTweetId
     , insertTweet
     , insertUser
@@ -20,7 +21,7 @@ import           Exceptions              (TwitterException (..))
 import           Model                   (Content (..), DBTweet (..), DBTweetId,
                                           DBUser (..), EntityField (..),
                                           Reply (..), Tweet (..), Unique (..),
-                                          UserName (..))
+                                          UserName (..), User(..))
 import           Util                    (whenJust)
 
 --------------------------------------------------------------------------------
@@ -70,6 +71,20 @@ getUserByNameDB name = do
         Nothing    -> throwM $ UserNotFound name
         Just eUser -> return eUser
 
+dbUserToUser :: Entity DBUser -> SqlPersistM User
+dbUserToUser (Entity uid dbuser) = do
+    userTweets <- selectList [DBTweetAuthorId ==. uid] defaultTweetSelectOpt
+    pure User
+        { uName           = UserName (dBUserName dbuser)
+        , uNumberOfTweets = length userTweets
+        , uFollowers      = 0
+        , uFollow         = 0
+        , uLikes          = 0
+        , uRetweets       = 0
+        , uProfile        = "To be implemented"
+        }
+
+
 --------------------------------------------------------------------------------
 -- IO Logic
 --------------------------------------------------------------------------------
@@ -101,15 +116,22 @@ getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
 getTweetById pool tweetId =
     flip runSqlPersistMPool pool $ getTweetByIdDB tweetId
 
+-- | Get user by name
+getUserByName :: ConnectionPool -> UserName -> IO User
+getUserByName pool userName =
+    flip runSqlPersistMPool pool $ do
+        eDBUser <- getUserByNameDB userName
+        dbUserToUser eDBUser
+
 -- | Insert a tweet
 -- if it's an reply tweet, you'll need to provide the parent id with (Maybe Int64)
 insertTweet :: ConnectionPool -> UserName -> Content -> Maybe Int64 -> IO Tweet
 insertTweet pool name content mReplyToInt = do
     let mReplyTo = toSqlKey <$> mReplyToInt
     flip runSqlPersistMPool pool $ do
-        currTime  <- getCurrentTime
-        eUser <- getUserByNameDB name
-        edbt  <- insertEntity DBTweet
+        currTime <- getCurrentTime
+        eUser    <- getUserByNameDB name
+        edbt     <- insertEntity DBTweet
             { dBTweetContent   = getContent content
             , dBTweetAuthorId  = entityKey eUser
             , dBTweetCreatedAt = currTime
@@ -124,7 +146,7 @@ insertTweet pool name content mReplyToInt = do
         dbTweetToTweet edbt
 
 -- | Insert an user
-insertUser :: ConnectionPool -> UserName -> IO DBUser
+insertUser :: ConnectionPool -> UserName -> IO User
 insertUser pool name = do
     let userName = getUserName name
     flip runSqlPersistMPool pool $ do
@@ -133,7 +155,7 @@ insertUser pool name = do
             then throwM $ UserNameAlreadyExists name
             else do
                 eUser <- insertEntity $ DBUser userName
-                return $ entityVal eUser
+                dbUserToUser eUser
 
 -- | Get most recent tweetId
 getLatestTweetId :: ConnectionPool -> IO (Maybe Int64)
