@@ -22,7 +22,7 @@ import           Lib                     (getLatestTweetId, insertTweet,
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
 import           Model                   (Tweet (..), UserName,
-                                          testUserList)
+                                          testUserList, migrateAll)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -73,8 +73,9 @@ mkRandomTweet = do
 insertUsers :: Config -> [UserName] -> IO ()
 insertUsers config users = do
     pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
+    runSqlPool (runMigration migrateAll) pool
 
-    forM_ users $ \user ->
+    forM_ users $ \user -> 
         ignoreException $ void $ insertUser pool config user
 
 -- | Exception handling for generator
