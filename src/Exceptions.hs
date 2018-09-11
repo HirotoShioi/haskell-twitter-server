@@ -11,12 +11,18 @@ import           Database.Persist.Sqlite
 
 import           Model (DBTweetId, UserName(..), DBUserId)
 
+-- | Exceptions for twitter server
 data TwitterException =
     TweetNotFound DBTweetId
+  -- ^ Tweet with given Id was not found
   | ParentTweetNotFound DBTweetId
+  -- ^ Looked up parent tweet but it was not found
   | UserIdNotFound DBUserId
+  --- ^ Looked up user by its Id but it was not found
   | UserNotFound UserName
+  -- ^ User with given name was not found
   | UserNameAlreadyExists UserName
+  -- ^ Try to register user but the username is already used
 
 instance Exception TwitterException
 

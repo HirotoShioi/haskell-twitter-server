@@ -4,7 +4,8 @@ Twitter server written in Haskell. This is for studying purposes.
 
 ## TODO
 
-- [ ] Define Config datatype
+- [x] Define Config datatype
+- [x] Define generator for initial db
 - [ ] Create User datatype
 - [ ] Validation (Username length, tweet length, etc)
 - [ ] Lookup Twitter API (Read [here](https://developer.twitter.com/))
@@ -15,7 +16,7 @@ Twitter server written in Haskell. This is for studying purposes.
 - [ ] Create frontend with [elm](https://elm-lang.org/)
 - [ ] User docker for postgresSQL
 - [ ] Authentication (Read [here](https://haskell-servant.readthedocs.io/en/stable/tutorial/Authentication.html))
-- [ ] Overall more data (User has only username,,)
+- [ ] Overall more data (User has only username)
 - [ ] Favorite
 - [ ] Test cases
 - [ ] More endpoints!
