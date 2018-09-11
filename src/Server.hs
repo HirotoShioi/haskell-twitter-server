@@ -6,7 +6,7 @@ module Server
 
 import           RIO
 
-import           Control.Exception.Safe   as C (try, catches, Handler(..))
+import           Control.Exception.Safe   as C (catches, Handler(..))
 import           Control.Monad.Logger     (runStderrLoggingT)
 
 import           Data.Aeson               (ToJSON)
@@ -65,10 +65,7 @@ getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
     handleWithException $ getTweetById pool tweetId
 
--- | Show error in Lazy Bytestring
-showError :: (IsString a, Exception e) => e -> a
-showError =  fromString . show
-
+-- | Exception handling
 handleWithException :: (ToJSON a) => IO a -> S.Handler a
 handleWithException action = C.catches (liftIO action)
      [C.Handler validationHandler, C.Handler twitterHandler]
@@ -77,6 +74,8 @@ handleWithException action = C.catches (liftIO action)
     validationHandler e = throwError err400 {errBody = showError e}
     twitterHandler :: TwitterException -> S.Handler a
     twitterHandler e = throwError err400 {errBody = showError e}
+    showError :: (IsString a, Exception e) => e -> a
+    showError =  fromString . show
 
 
 --------------------------------------------------------------------------------

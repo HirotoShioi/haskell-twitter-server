@@ -148,7 +148,6 @@ insertTweet pool name content mReplyToInt = do
         dbTweetToTweet edbt
 
 -- | Insert an user
--- How do I know given username is valid? perhaps
 insertUser :: ConnectionPool -> Config -> UserName -> IO User
 insertUser pool config name =
     case validate config name of
