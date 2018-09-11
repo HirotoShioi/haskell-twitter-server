@@ -10,7 +10,7 @@ import           RIO
 
 import           Servant
 
-import           Model (Tweet, User, UserName)
+import           Model   (Tweet, User, UserName)
 
 type Api =
          "api" :> "tweets" :> Get '[JSON] [Tweet]

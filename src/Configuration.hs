@@ -3,7 +3,7 @@ module Configuration
     , defaultConfig
     ) where
 
-import RIO
+import           RIO
 
 
 data Config = Config {
@@ -19,7 +19,7 @@ data Config = Config {
 type PortNumber = Int
 
 defaultConfig :: Config
-defaultConfig = Config { 
+defaultConfig = Config {
       cfgProductionDBPath  = "sqlite.db"
     , cfgDevelopmentDBPath = "sqlite.db"
     , cfgPortNumber        = 3000

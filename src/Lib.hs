@@ -21,7 +21,8 @@ import           Exceptions              (TwitterException (..))
 import           Model                   (Content (..), DBTweet (..), DBTweetId,
                                           DBUser (..), EntityField (..),
                                           Reply (..), Tweet (..), Unique (..),
-                                          User (..), UserName (..), Validate(..))
+                                          User (..), UserName (..),
+                                          Validate (..))
 import           Util                    (whenJust)
 
 import           Configuration           (Config (..))

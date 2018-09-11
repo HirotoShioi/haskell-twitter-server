@@ -12,10 +12,13 @@ import           RIO
 
 import           Data.Aeson              (ToJSON (..), object, (.=))
 import           Data.Char               (isAscii)
+
 import           Database.Persist.Sqlite (Key, toSqlKey)
 import           Database.Persist.TH
+
 import           RIO.Text                (unpack)
 import           RIO.Time                (UTCTime (..), fromGregorian)
+
 import           Servant                 (FromHttpApiData (..))
 import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
                                           vectorOf)

@@ -1,6 +1,6 @@
-module Util 
+module Util
     ( safeHead
-    , whenJust 
+    , whenJust
     ) where
 
 import           RIO

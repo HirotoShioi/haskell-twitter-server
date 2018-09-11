@@ -18,7 +18,6 @@ import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
 
 import           Lib                     (getLatestTweetId, insertTweet,
                                           insertUser)
-
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
 import           Model                   (Tweet (..), UserName,

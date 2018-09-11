@@ -6,10 +6,10 @@ module Exceptions
 
 import           RIO
 
-import           RIO.Text (unpack)
 import           Database.Persist.Sqlite (fromSqlKey)
+import           RIO.Text                (unpack)
 
-import           Model (DBTweetId, UserName(..), DBUserId)
+import           Model                   (DBTweetId, DBUserId, UserName (..))
 
 -- | Exceptions for twitter server
 data TwitterException =
@@ -28,9 +28,9 @@ instance Exception TwitterException
 
 instance Show TwitterException where
     show = \case
-        TweetNotFound dtid -> 
+        TweetNotFound dtid ->
             "Tweet with given id was not found: " <> show (fromSqlKey dtid)
-        ParentTweetNotFound dtid -> 
+        ParentTweetNotFound dtid ->
             "Parent tweet was not found: " <> show (fromSqlKey dtid)
         UserIdNotFound uid ->
             "User with given id was not found: " <> show (fromSqlKey uid)

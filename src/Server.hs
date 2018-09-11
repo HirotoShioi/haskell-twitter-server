@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Server
-    ( Server.runServer
+    ( runTwitterServer
     ) where
 
 import           RIO
 
-import           Control.Exception.Safe   as C (catches, Handler(..))
+import           Control.Exception.Safe   as C (Handler (..), catches)
 import           Control.Monad.Logger     (runStderrLoggingT)
 
 import           Data.Aeson               (ToJSON)
@@ -26,7 +26,7 @@ import           Lib                      (getAllTweets, getTweetById,
                                            getTweetsByUser, getUserByName,
                                            insertUser)
 import           Model                    (Tweet (..), User (..), UserName,
-                                           migrateAll, ValidationException(..))
+                                           ValidationException (..), migrateAll)
 
 -- | Server endpoints
 server :: ConnectionPool -> Config -> Server Api
@@ -55,7 +55,7 @@ getUserProfileH pool userName = liftIO $ getUserByName pool userName
 -- | Create user with given UserName
 createUserH :: ConnectionPool -> Config -> UserName -> S.Handler User
 createUserH pool cfg userName = handleWithException $ insertUser pool cfg userName
-  
+
 
 -- | Get Tweet by its Id
 getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler Tweet
@@ -93,8 +93,8 @@ mkApp config = do
     return $ app pool config
 
 -- | Run application with given file as database
-runServer :: IO ()
-runServer = do
+runTwitterServer :: IO ()
+runTwitterServer = do
     let config = defaultConfig
     say $ "Starting " <> cfgServerName config <> " on port " <> tshow (cfgPortNumber config)
     application <- mkApp config
