@@ -23,9 +23,9 @@ import           Model                   (Content (..), DBTweet (..), DBTweetId,
                                           UserName (..))
 import           Util                    (whenJust)
 
----------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- SQL Logic
----------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | Default SelectOpt
 defaultTweetSelectOpt :: [SelectOpt DBTweet]
@@ -36,9 +36,9 @@ dbTweetToTweet :: Entity DBTweet -> SqlPersistM Tweet
 dbTweetToTweet (Entity tid dbt) = do
     eReplyList <- selectList [ReplyParent ==. tid] [Asc ReplyCreatedAt]
     let replyList = entityVal <$> eReplyList
-    replies <- getTweetsByIdDB (map replyChild replyList)
-    mUser   <- selectFirst [DBUserId ==. dBTweetAuthorId dbt] []
-    case entityVal <$> mUser of
+    replies    <- getTweetsByIdDB (map replyChild replyList)
+    mUser      <- get $ dBTweetAuthorId dbt
+    case mUser of
         Nothing -> throwM $ UserIdNotFound (dBTweetAuthorId dbt)
         Just user ->
             return Tweet
@@ -53,7 +53,7 @@ dbTweetToTweet (Entity tid dbt) = do
 -- | Fetch DBTweet with it's id and convert into Tweet type
 getTweetByIdDB :: DBTweetId -> SqlPersistM Tweet
 getTweetByIdDB tweetNum = do
-    mTweet <- selectFirst [DBTweetId ==. tweetNum] defaultTweetSelectOpt
+    mTweet <- getEntity tweetNum
     case mTweet of
         Nothing    -> throwM $ TweetNotFound tweetNum
         Just tweet -> dbTweetToTweet tweet
@@ -107,19 +107,19 @@ insertTweet :: ConnectionPool -> UserName -> Content -> Maybe Int64 -> IO Tweet
 insertTweet pool name content mReplyToInt = do
     let mReplyTo = toSqlKey <$> mReplyToInt
     flip runSqlPersistMPool pool $ do
-        time  <- getCurrentTime
+        currTime  <- getCurrentTime
         eUser <- getUserByNameDB name
         edbt  <- insertEntity DBTweet
             { dBTweetContent   = getContent content
             , dBTweetAuthorId  = entityKey eUser
-            , dBTweetCreatedAt = time
+            , dBTweetCreatedAt = currTime
             , dBTweetReplyTo   = mReplyTo
             }
 
         whenJust mReplyTo $ \parentId -> do
-                mTweet <- selectFirst [DBTweetId ==. parentId] []
+                mTweet <- get parentId
                 if isJust mTweet
-                    then insert_ $ Reply parentId (entityKey edbt) time
+                    then insert_ $ Reply parentId (entityKey edbt) currTime
                     else throwM $ ParentTweetNotFound parentId
         dbTweetToTweet edbt
 
@@ -128,7 +128,7 @@ insertUser :: ConnectionPool -> UserName -> IO DBUser
 insertUser pool name = do
     let userName = getUserName name
     flip runSqlPersistMPool pool $ do
-        mUser <- selectFirst [DBUserName ==. userName] []
+        mUser <- getBy $ UniqueUserName userName
         if isJust mUser
             then throwM $ UserNameAlreadyExists name
             else do
