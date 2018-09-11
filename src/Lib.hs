@@ -87,7 +87,6 @@ dbUserToUser (Entity uid dbuser) = do
         , uProfile        = "To be implemented"
         }
 
-
 --------------------------------------------------------------------------------
 -- IO Logic
 --------------------------------------------------------------------------------
@@ -117,8 +116,21 @@ getTweetsByUser pool username =
 -- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
 getTweetById pool tweetId =
-    flip runSqlPersistMPool pool $ getTweetByIdDB tweetId
-
+    flip runSqlPersistMPool pool $ do
+        rootId <- findRootId tweetId
+        getTweetByIdDB rootId
+  where
+    -- Can make it better ConT?
+    findRootId :: DBTweetId -> SqlPersistM DBTweetId
+    findRootId dbTid = do
+        mDBTweet <- get dbTid
+        case mDBTweet of
+            Nothing      -> throwM $ TweetNotFound dbTid
+            Just dbTweet -> 
+                case dBTweetReplyTo dbTweet of
+                    Nothing -> return dbTid
+                    Just parentId -> findRootId parentId
+ 
 -- | Get user by name
 getUserByName :: ConnectionPool -> UserName -> IO User
 getUserByName pool userName =
