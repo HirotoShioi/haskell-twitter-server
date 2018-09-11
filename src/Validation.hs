@@ -79,6 +79,7 @@ instance Show ValidationException where
             "Given user name is too short, must be at least " <> show num <> " characters"
         UserNameTooLong num    ->
             "Given user name is too long, must be shorter than " <> show num <> " characters"
+        -- Buggy,, how do I fix it?
         InvalidCharacters name ->
             "Give user name includes invalid characters: " <> unpack name
         TweetTooLong num       ->

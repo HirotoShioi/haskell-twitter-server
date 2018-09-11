@@ -12,7 +12,7 @@ data Config = Config {
      , cfgPortNumber        :: !PortNumber
      , cfgTweetLength       :: !Int
      , cfgUserNameMinLength :: !Int
-     , cfgUserNameMaxLength    :: !Int
+     , cfgUserNameMaxLength :: !Int
      , cfgServerName        :: !Text
      }
 
