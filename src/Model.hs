@@ -64,7 +64,18 @@ data Tweet = Tweet
 -- (TODO) Create User type
 data User = User
     { uName           :: !UserName
+    -- ^ Name of the user
     , uNumberOfTweets :: !Int
+    -- ^ Number of tweets
+    , uFollowers      :: !Int
+    -- ^ Number of followers
+    , uFollow         :: !Int
+    -- ^ Number of follows
+    , uLikes          :: !Int
+    -- ^ Number of tweets user liked
+    , uRetweets       :: !Int
+    -- ^ Number of retweets
+    , uProfile        :: !Text
     } deriving Show
 
 --------------------------------------------------------------------------------
@@ -144,7 +155,17 @@ instance Arbitrary User where
     arbitrary = do
         uName <- elements testUserList
         uNumberOfTweets <- arbitrary
-
+        uFollowers <- choose (1, 1000)
+        uFollow    <- choose (1, 1000)
+        uLikes     <- choose (1, 100)
+        uRetweets  <- choose (1, 1000)
+        uProfile   <- elements [ "I'm mathmatician"
+                               , "I'm from Kyoto"
+                               , "I drunk too many yesterday"
+                               , "Geocachin' everyday"
+                               , "京都のHaskeller"
+                               , "Hello from Barbados"
+                               ]
         pure User{..}
 
 testUserList :: [UserName]

@@ -77,6 +77,11 @@ dbUserToUser (Entity uid dbuser) = do
     pure User
         { uName           = UserName (dBUserName dbuser)
         , uNumberOfTweets = length userTweets
+        , uFollowers      = 0
+        , uFollow         = 0
+        , uLikes          = 0
+        , uRetweets       = 0
+        , uProfile        = "To be implemented"
         }
 
 
