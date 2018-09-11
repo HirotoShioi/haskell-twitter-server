@@ -21,8 +21,8 @@ import           Lib                     (getLatestTweetId, insertTweet,
 
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
-import           Model                   (Tweet (..), UserName (..),
-                                          testUserList)
+import           Model                   (Tweet (..), UserName,
+                                          testUserList, migrateAll)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -70,12 +70,13 @@ mkRandomTweet = do
     return $ randomTweet { tReplyTo = Nothing, tReplies = []}
 
 -- | Insert Users into given databse
-insertUsers :: FilePath -> [UserName] -> IO ()
-insertUsers sqliteFile users = do
-    pool <- runStderrLoggingT $ createSqlitePool (cs sqliteFile) 5
+insertUsers :: Config -> [UserName] -> IO ()
+insertUsers config users = do
+    pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
+    runSqlPool (runMigration migrateAll) pool
 
-    forM_ users $ \user ->
-        ignoreException $ void $ insertUser pool user
+    forM_ users $ \user -> 
+        ignoreException $ void $ insertUser pool config user
 
 -- | Exception handling for generator
 ignoreException :: IO () -> IO ()
@@ -88,6 +89,6 @@ ignoreException = handle handleException
 
 insertRandomDataIntoEmptyDB :: Config -> IO ()
 insertRandomDataIntoEmptyDB cfg = do
-    insertUsers (cfgDevelopmentDBPath cfg) testUserList
+    insertUsers cfg testUserList
     tweetRandomly (cfgDevelopmentDBPath cfg) 100
 

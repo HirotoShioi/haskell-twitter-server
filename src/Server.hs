@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Server
@@ -7,12 +6,11 @@ module Server
 
 import           RIO
 
-import           Control.Exception.Safe   as C (try)
+import           Control.Exception.Safe   as C (catches, Handler(..))
 import           Control.Monad.Logger     (runStderrLoggingT)
 
 import           Data.Aeson               (ToJSON)
 import           Data.String.Conversions  (cs)
-
 import           Database.Persist.Sqlite  (ConnectionPool, createSqlitePool,
                                            runMigration, runSqlPool, toSqlKey)
 
@@ -28,15 +26,16 @@ import           Exceptions               (TwitterException (..))
 import           Lib                      (getAllTweets, getTweetById,
                                            getTweetsByUser, getUserByName,
                                            insertUser)
-import           Model                    (Tweet (..), User (..), UserName (..),
+import           Model                    (Tweet (..), User (..), UserName,
                                            migrateAll)
+import           Validation               (ValidationException(..))
 
 -- | Server endpoints
-server :: ConnectionPool -> Server Api
-server pool = getAllTweetsH pool
+server :: ConnectionPool -> Config -> Server Api
+server pool config = getAllTweetsH pool
     :<|> getTweetsByUserH pool
     :<|> getUserProfileH pool
-    :<|> createUserH pool
+    :<|> createUserH pool config
     :<|> getTweetByIdH pool
 
 --------------------------------------------------------------------------------
@@ -56,47 +55,49 @@ getUserProfileH :: ConnectionPool -> UserName -> S.Handler User
 getUserProfileH pool userName = liftIO $ getUserByName pool userName
 
 -- | Create user with given UserName
-createUserH :: ConnectionPool -> UserName -> S.Handler User
-createUserH pool userName = do
-    eResult <- liftIO $ C.try $ insertUser pool userName
-    handleTwitterException eResult
+createUserH :: ConnectionPool -> Config -> UserName -> S.Handler User
+createUserH pool cfg userName = handleWithException $ insertUser pool cfg userName
+  
 
 -- | Get Tweet by its Id
 getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler Tweet
 getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
-    eResult <- liftIO $ C.try $ getTweetById pool tweetId
-    handleTwitterException eResult
+    handleWithException $ getTweetById pool tweetId
 
--- | Show error in Lazy Bytestring
-showError :: (IsString a, Exception e) => e -> a
-showError =  fromString . show
+-- | Exception handling
+handleWithException :: (ToJSON a) => IO a -> S.Handler a
+handleWithException action = C.catches (liftIO action)
+     [C.Handler validationHandler, C.Handler twitterHandler]
+  where
+    validationHandler :: ValidationException -> S.Handler a
+    validationHandler e = throwError err400 {errBody = showError e}
+    twitterHandler :: TwitterException -> S.Handler a
+    twitterHandler e = throwError err400 {errBody = showError e}
+    showError :: (IsString a, Exception e) => e -> a
+    showError =  fromString . show
 
--- | Exception handling on Twitter error
-handleTwitterException :: (ToJSON a) => Either TwitterException a -> S.Handler a
-handleTwitterException (Left e)  = throwError err400 {errBody = showError e}
-handleTwitterException (Right a) = return a
 
 --------------------------------------------------------------------------------
 -- Server logic
 --------------------------------------------------------------------------------
 
 -- (TODO): Use proper SQL?
-app :: ConnectionPool -> Application
-app pool = serve api $ server pool
+app :: ConnectionPool -> Config -> Application
+app pool config = serve api $ server pool config
 
 -- | Run application with given file as database
-mkApp :: FilePath -> IO Application
-mkApp sqliteFile = do
-    pool <- runStderrLoggingT $ createSqlitePool (cs sqliteFile) 5
+mkApp :: Config -> IO Application
+mkApp config = do
+    pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
 
     runSqlPool (runMigration migrateAll) pool
-    return $ app pool
+    return $ app pool config
 
 -- | Run application with given file as database
 runServer :: IO ()
 runServer = do
-    let Config{..} = defaultConfig
-    say $ "Starting " <> cfgServerName <> " on port " <> tshow cfgPortNumber
-    application <- mkApp cfgDevelopmentDBPath
-    Warp.run cfgPortNumber application
+    let config = defaultConfig
+    say $ "Starting " <> cfgServerName config <> " on port " <> tshow (cfgPortNumber config)
+    application <- mkApp config
+    Warp.run (cfgPortNumber config) application
