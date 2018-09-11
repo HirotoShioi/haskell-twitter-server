@@ -21,14 +21,12 @@ import           Servant                  as S
 
 import           Api                      (Api, api)
 import           Configuration            (Config (..), defaultConfig)
-
 import           Exceptions               (TwitterException (..))
 import           Lib                      (getAllTweets, getTweetById,
                                            getTweetsByUser, getUserByName,
                                            insertUser)
 import           Model                    (Tweet (..), User (..), UserName,
-                                           migrateAll)
-import           Validation               (ValidationException(..))
+                                           migrateAll, ValidationException(..))
 
 -- | Server endpoints
 server :: ConnectionPool -> Config -> Server Api
