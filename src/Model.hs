@@ -18,7 +18,9 @@ import           Servant                 (FromHttpApiData (..))
 import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
                                           vectorOf)
 
-import           Configuration           (Config (..))
+import           RIO.Text                (unpack)
+import           Data.Char               (isAscii)
+import           Configuration (Config (..))
 
 -- | Database Schema
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -181,3 +183,65 @@ testUserList = map UserName
 
 instance FromHttpApiData UserName where
     parseUrlPiece userName = UserName <$> parseUrlPiece userName
+
+--------------------------------------------------------------------------------
+-- Validation
+--------------------------------------------------------------------------------
+
+class Validate a where
+    validate :: Config -> a -> Either ValidationException a
+
+instance Validate UserName where
+    validate = validateUserName
+
+instance Validate Content where
+    validate = validateContent
+
+-- Maybe access database?
+-- Nahhh valid username and name already existing on db is different problem
+validateUserName :: Config -> UserName -> Either ValidationException UserName
+validateUserName cfg userName =
+    UserName <$> (isValidMinLength userName >>= isValidMaxLength >>= isUsingValidCharacters)
+  where
+    isValidMinLength :: UserName -> Either ValidationException Text
+    isValidMinLength name = do
+        let usrName = getUserName name
+        if length (unpack usrName) >= cfgUserNameMinLength cfg
+            then return usrName
+            else Left $ UserNameTooShort (cfgUserNameMinLength cfg)
+    isValidMaxLength :: Text -> Either ValidationException Text
+    isValidMaxLength name =
+        if length (unpack name) <= cfgUserNameMaxLength cfg
+            then return name
+            else Left $ UserNameTooLong (cfgUserNameMaxLength cfg)
+    isUsingValidCharacters ::Text -> Either ValidationException Text
+    isUsingValidCharacters name =
+        if all isAscii $ unpack name
+            then return name
+            else Left $ InvalidCharacters name
+
+validateContent :: Config -> Content -> Either ValidationException Content
+validateContent cfg ccc = do
+    let cc = getContent ccc
+    Content <$> (isValidContentLength cc >>= isNonEmptyTweet)
+  where
+    isValidContentLength :: Text -> Either ValidationException Text
+    isValidContentLength c =
+        if length (unpack c) <= cfgTweetLength cfg
+            then return c
+            else Left $ TweetTooLong (cfgTweetLength cfg)
+    isNonEmptyTweet :: Text -> Either ValidationException Text
+    isNonEmptyTweet c = 
+        if not $ null (unpack c)
+            then return c
+            else Left EmptyTweet
+
+data ValidationException =
+      UserNameTooShort Int
+    | UserNameTooLong Int
+    | InvalidCharacters Text
+    | TweetTooLong Int
+    | EmptyTweet
+    deriving Show
+
+instance Exception ValidationException

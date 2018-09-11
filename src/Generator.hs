@@ -21,7 +21,7 @@ import           Lib                     (getLatestTweetId, insertTweet,
 
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
-import           Model                   (Tweet (..), UserName (..),
+import           Model                   (Tweet (..), UserName,
                                           testUserList)
 
 --------------------------------------------------------------------------------

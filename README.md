@@ -18,9 +18,9 @@ Twitter server written in Haskell. This is for studying purposes.
 - [ ] Create frontend with [elm](https://elm-lang.org/)
 - [ ] User docker for postgresSQL
 - [ ] Authentication (Read [here](https://haskell-servant.readthedocs.io/en/stable/tutorial/Authentication.html))
-- [ ] Overall more data (User has only username)
+- [x] Overall more data (User has only username)
 - [ ] Favorites
-- [ ] ReTweets
+- [ ] Retweets
 - [ ] Test cases
 - [ ] More endpoints!
 - [ ] Search API
