@@ -6,12 +6,11 @@ module Server
 
 import           RIO
 
-import           Control.Exception.Safe   as C (try)
+import           Control.Exception.Safe   as C (try, catches, Handler(..))
 import           Control.Monad.Logger     (runStderrLoggingT)
 
 import           Data.Aeson               (ToJSON)
 import           Data.String.Conversions  (cs)
-
 import           Database.Persist.Sqlite  (ConnectionPool, createSqlitePool,
                                            runMigration, runSqlPool, toSqlKey)
 
@@ -28,7 +27,8 @@ import           Lib                      (getAllTweets, getTweetById,
                                            getTweetsByUser, getUserByName,
                                            insertUser)
 import           Model                    (Tweet (..), User (..), UserName,
-                                           migrateAll, Validate(..))
+                                           migrateAll)
+import           Validation               (ValidationException(..))
 
 -- | Server endpoints
 server :: ConnectionPool -> Config -> Server Api
@@ -56,28 +56,28 @@ getUserProfileH pool userName = liftIO $ getUserByName pool userName
 
 -- | Create user with given UserName
 createUserH :: ConnectionPool -> Config -> UserName -> S.Handler User
-createUserH pool cfg userName =
-    case validate cfg userName of
-        Left e -> throwError err400 {errBody = showError e}
-        Right validUserName -> do
-            eResult <- liftIO $ C.try $ insertUser pool validUserName
-            handleTwitterException eResult
+createUserH pool cfg userName = handleWithException $ insertUser pool cfg userName
+  
 
 -- | Get Tweet by its Id
 getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler Tweet
 getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
-    eResult <- liftIO $ C.try $ getTweetById pool tweetId
-    handleTwitterException eResult
+    handleWithException $ getTweetById pool tweetId
 
 -- | Show error in Lazy Bytestring
 showError :: (IsString a, Exception e) => e -> a
 showError =  fromString . show
 
--- | Exception handling on Twitter error
-handleTwitterException :: (ToJSON a) => Either TwitterException a -> S.Handler a
-handleTwitterException (Left e)  = throwError err400 {errBody = showError e}
-handleTwitterException (Right a) = return a
+handleWithException :: (ToJSON a) => IO a -> S.Handler a
+handleWithException action = C.catches (liftIO action)
+     [C.Handler validationHandler, C.Handler twitterHandler]
+  where
+    validationHandler :: ValidationException -> S.Handler a
+    validationHandler e = throwError err400 {errBody = showError e}
+    twitterHandler :: TwitterException -> S.Handler a
+    twitterHandler e = throwError err400 {errBody = showError e}
+
 
 --------------------------------------------------------------------------------
 -- Server logic

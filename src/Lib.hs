@@ -21,9 +21,11 @@ import           Exceptions              (TwitterException (..))
 import           Model                   (Content (..), DBTweet (..), DBTweetId,
                                           DBUser (..), EntityField (..),
                                           Reply (..), Tweet (..), Unique (..),
-                                          UserName (..), User(..))
+                                          User (..), UserName (..))
 import           Util                    (whenJust)
 
+import           Configuration           (Config (..))
+import           Validation              (Validate (..))
 --------------------------------------------------------------------------------
 -- SQL Logic
 --------------------------------------------------------------------------------
@@ -146,16 +148,20 @@ insertTweet pool name content mReplyToInt = do
         dbTweetToTweet edbt
 
 -- | Insert an user
-insertUser :: ConnectionPool -> UserName -> IO User
-insertUser pool name = do
-    let userName = getUserName name
-    flip runSqlPersistMPool pool $ do
-        mUser <- getBy $ UniqueUserName userName
-        if isJust mUser
-            then throwM $ UserNameAlreadyExists name
-            else do
-                eUser <- insertEntity $ DBUser userName
-                dbUserToUser eUser
+-- How do I know given username is valid? perhaps
+insertUser :: ConnectionPool -> Config -> UserName -> IO User
+insertUser pool config name =
+    case validate config name of
+        Left e -> throwM e
+        Right validName -> do
+            let userName = getUserName validName
+            flip runSqlPersistMPool pool $ do
+                mUser <- getBy $ UniqueUserName userName
+                if isJust mUser
+                    then throwM $ UserNameAlreadyExists name
+                    else do
+                        eUser <- insertEntity $ DBUser userName
+                        dbUserToUser eUser
 
 -- | Get most recent tweetId
 getLatestTweetId :: ConnectionPool -> IO (Maybe Int64)
