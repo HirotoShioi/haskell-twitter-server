@@ -7,7 +7,7 @@ Twitter server written in Haskell. This is for studying purposes.
 - [x] Define Config datatype
 - [x] Define generator for initial db
 - [x] Define User datatype and utilize it
-- [ ] Validation (Username length, tweet length, etc)
+- [x] Validation (Username length, tweet length, etc)
 - [ ] Enforce UserName to only use latin-charcters (How?)
 - [ ] Use [lens](http://hackage.haskell.org/package/lens)
 - [ ] Apply ReaderT Config on Servant handlers (Read [here](https://haskell-servant.readthedocs.io/en/stable/cookbook/using-custom-monad/UsingCustomMonad.html))

@@ -11,6 +11,7 @@ import           Data.Char     (isAscii)
 import           RIO.Text      (unpack)
 
 import           Model         (Content (..), UserName (..))
+
 --------------------------------------------------------------------------------
 -- Validation
 --------------------------------------------------------------------------------
@@ -33,7 +34,7 @@ validateUserName cfg userName = do
   where
     isValidMinLength :: Text -> Either ValidationException Text
     isValidMinLength usrName =
-        if length (unpack usrName) >= cfgUserNameMinLength cfg
+        if length (unpack usrName) > cfgUserNameMinLength cfg
             then return usrName
             else Left $ UserNameTooShort (cfgUserNameMinLength cfg)
     isValidMaxLength :: Text -> Either ValidationException Text
