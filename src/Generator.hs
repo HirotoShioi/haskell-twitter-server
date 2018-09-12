@@ -16,17 +16,17 @@ import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
                                           vectorOf)
 
-import           Lib                     (getLatestTweetId, insertTweet,
-                                          insertUser)
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
-import           Model                   (Tweet (..), UserName,
-                                          testUserList, migrateAll)
+import           Lib                     (getLatestTweetId, insertTweet,
+                                          insertUser)
+import           Model                   (Tweet (..), UserName, migrateAll,
+                                          testUserList)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
 --------------------------------------------------------------------------------
-
+-- FIX GENERATOR
 -- | Tweet type
 data TweetType =  Normal | Response
     deriving (Show)
@@ -46,8 +46,8 @@ insertRandomTweet :: ConnectionPool -> IO ()
 insertRandomTweet pool = do
     randomTweet <- generate mkRandomTweet
     let userName = tAuthor randomTweet
-        content  = tContent randomTweet
-    ignoreException $ void $ insertTweet pool userName content Nothing
+        content  = tText randomTweet
+    ignoreException $ void $ insertTweet pool userName content Nothing []
 
 -- | Reply to random tweet
 replyRandomTweet :: ConnectionPool -> IO ()
@@ -58,9 +58,9 @@ replyRandomTweet pool = do
         (Just num) -> do
             randomTweet <- generate mkRandomTweet
             let userName = tAuthor randomTweet
-                content  = tContent randomTweet
+                content  = tText randomTweet
             randomId <- generate $ elements [1 .. num]
-            ignoreException $ void $ insertTweet pool userName content (Just randomId)
+            ignoreException $ void $ insertTweet pool userName content (Just randomId) []
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
@@ -74,7 +74,7 @@ insertUsers config users = do
     pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
     runSqlPool (runMigration migrateAll) pool
 
-    forM_ users $ \user -> 
+    forM_ users $ \user ->
         ignoreException $ void $ insertUser pool config user
 
 -- | Exception handling for generator

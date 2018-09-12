@@ -32,7 +32,7 @@ DBUser
     UniqueUserName name
     deriving Show
 DBTweet
-    content Text
+    text Text
     authorId DBUserId
     createdAt UTCTime default=CURRENT_TIME
     replyTo DBTweetId Maybe
@@ -41,14 +41,18 @@ Reply
     parent DBTweetId
     child  DBTweetId
     createdAt UTCTime default=CURRENT_TIME
+Mentions
+    tweetId DBTweetId
+    userId  DBUserId
+    mentionedAt UTCTime default=CURRENT_TIME
 |]
 
 newtype UserName = UserName
     { getUserName :: Text
     } deriving (Show, Eq)
 
-newtype Content = Content
-    { getContent :: Text
+newtype TweetText = TweetText
+    { getTweetText :: Text
     } deriving (Show, Eq)
 
 -- | Endpoint representaiton of DBTweet data
@@ -56,17 +60,24 @@ newtype Content = Content
 data Tweet = Tweet
     { tId        :: !Int64
     -- ^ Int64 representation of tweet Id
-    , tContent   :: !Content
+    , tText      :: !TweetText
     -- ^ Content aka tweet itself
     , tAuthor    :: !UserName
     -- ^ Author of the tweet
     , tCreatedAt :: !UTCTime
     -- ^ Date in which the tweet was created at
     , tReplyTo   :: !(Maybe Int64)
+    -- ^ Mentions
+    , tMentions  :: ![Mention]
     -- ^ Id of parent tweet
     , tReplies   :: ![Tweet]
     -- ^ List of replies
     } deriving (Show)
+
+data Mention = Mention {
+      mName :: !UserName
+    , mId   :: !Int64
+    } deriving Show
 
 -- (TODO) Create User type
 data User = User
@@ -84,7 +95,6 @@ data User = User
     -- ^ Number of retweets
     , uProfile        :: !Text
     } deriving Show
-
 --------------------------------------------------------------------------------
 -- TypeClasses
 --------------------------------------------------------------------------------
@@ -93,7 +103,7 @@ instance ToJSON Tweet where
     toJSON Tweet{..} =
         let tweetObj = object
                 [ "id"        .= tId
-                , "content"   .= getContent tContent
+                , "text"      .= getTweetText tText
                 , "author"    .= getUserName tAuthor
                 , "createdAt" .= tCreatedAt
                 , "replyTo"   .= tReplyTo
@@ -113,8 +123,8 @@ instance ToJSON User where
 -- Arbitrary
 --------------------------------------------------------------------------------
 
-instance Arbitrary Content where
-    arbitrary = Content <$> arbitrary
+instance Arbitrary TweetText where
+    arbitrary = TweetText <$> arbitrary
 
 instance Arbitrary UserName where
     arbitrary = UserName <$> arbitrary
@@ -136,10 +146,17 @@ instance Arbitrary UTCTime where
 instance Arbitrary (Key DBTweet) where
     arbitrary = toSqlKey <$> arbitrary
 
+instance Arbitrary Mention where
+    arbitrary = do
+        mName <- elements testUserList
+        mId   <- arbitrary
+
+        pure Mention{..}
+
 instance Arbitrary Tweet where
     arbitrary = do
         tId        <- arbitrary
-        tContent   <- Content <$> elements
+        tText      <- TweetText <$> elements
             [ "My first tweet"
             , "Today is rainy day"
             , "My shoulder hurts"
@@ -153,6 +170,7 @@ instance Arbitrary Tweet where
         tAuthor    <- elements testUserList
         tCreatedAt <- arbitrary
         tReplyTo   <- arbitrary
+        tMentions  <- arbitrary
         listLen    <- choose (0,2)
         tReplies   <- vectorOf listLen arbitrary
 
@@ -197,7 +215,7 @@ class Validate a where
 instance Validate UserName where
     validate = validateUserName
 
-instance Validate Content where
+instance Validate TweetText where
     validate = validateContent
 
 -- Maybe access database?
@@ -209,7 +227,7 @@ validateUserName cfg userName = do
   where
     isValidMinLength :: Text -> Either ValidationException Text
     isValidMinLength usrName =
-        if T.length usrName > cfgUserNameMinLength cfg
+        if T.length usrName >= cfgUserNameMinLength cfg
             then return usrName
             else Left $ UserNameTooShort (cfgUserNameMinLength cfg)
     isValidMaxLength :: Text -> Either ValidationException Text
@@ -223,10 +241,10 @@ validateUserName cfg userName = do
             then return name
             else Left $ InvalidCharacters name
 
-validateContent :: Config -> Content -> Either ValidationException Content
+validateContent :: Config -> TweetText -> Either ValidationException TweetText
 validateContent cfg ccc = do
-    let cc = getContent ccc
-    Content <$> (isValidContentLength cc >>= isNonEmptyTweet)
+    let cc = getTweetText ccc
+    TweetText <$> (isValidContentLength cc >>= isNonEmptyTweet)
   where
     isValidContentLength :: Text -> Either ValidationException Text
     isValidContentLength c =
