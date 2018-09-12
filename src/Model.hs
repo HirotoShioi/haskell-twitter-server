@@ -16,7 +16,7 @@ import           Data.Char               (isAscii)
 import           Database.Persist.Sqlite (Key, toSqlKey)
 import           Database.Persist.TH
 
-import           RIO.Text                (unpack)
+import qualified RIO.Text as T
 import           RIO.Time                (UTCTime (..), fromGregorian)
 
 import           Servant                 (FromHttpApiData (..))
@@ -209,17 +209,17 @@ validateUserName cfg userName = do
   where
     isValidMinLength :: Text -> Either ValidationException Text
     isValidMinLength usrName =
-        if length (unpack usrName) > cfgUserNameMinLength cfg
+        if T.length usrName > cfgUserNameMinLength cfg
             then return usrName
             else Left $ UserNameTooShort (cfgUserNameMinLength cfg)
     isValidMaxLength :: Text -> Either ValidationException Text
     isValidMaxLength usrName =
-        if length (unpack usrName) <= cfgUserNameMaxLength cfg
+        if T.length usrName <= cfgUserNameMaxLength cfg
             then return usrName
             else Left $ UserNameTooLong (cfgUserNameMaxLength cfg)
     isUsingValidCharacters ::Text -> Either ValidationException Text
     isUsingValidCharacters name =
-        if all isAscii $ unpack name
+        if all isAscii $ T.unpack name
             then return name
             else Left $ InvalidCharacters name
 
@@ -230,12 +230,12 @@ validateContent cfg ccc = do
   where
     isValidContentLength :: Text -> Either ValidationException Text
     isValidContentLength c =
-        if length (unpack c) <= cfgTweetLength cfg
+        if T.length c <= cfgTweetLength cfg
             then return c
             else Left $ TweetTooLong (cfgTweetLength cfg)
     isNonEmptyTweet :: Text -> Either ValidationException Text
     isNonEmptyTweet c =
-        if not $ null (unpack c)
+        if not $ T.null c
             then return c
             else Left EmptyTweet
 
@@ -256,7 +256,7 @@ instance Show ValidationException where
             "Given user name is too long, must be shorter than " <> show num <> " characters"
         -- Buggy,, how do I fix it?
         InvalidCharacters name ->
-            "Give user name includes invalid characters: " <> unpack name
+            "Give user name includes invalid characters: " <> show name
         TweetTooLong num       ->
             "Given content is too long, must be shorter than " <> show num <> " characters"
         EmptyTweet             ->

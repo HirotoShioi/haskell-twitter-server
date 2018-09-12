@@ -12,20 +12,21 @@ module Lib
 
 import           RIO
 
+
+import           Control.Monad.Trans.Cont (ContT (..), evalContT)
 import           Database.Persist
 import           Database.Persist.Sqlite
+import           RIO.Time                 (getCurrentTime)
 
-import           RIO.Time
+import           Exceptions               (TwitterException (..))
+import           Model                    (Content (..), DBTweet (..),
+                                           DBTweetId, DBUser (..),
+                                           EntityField (..), Reply (..),
+                                           Tweet (..), Unique (..), User (..),
+                                           UserName (..), Validate (..))
+import           Util                     (whenJust)
 
-import           Exceptions              (TwitterException (..))
-import           Model                   (Content (..), DBTweet (..), DBTweetId,
-                                          DBUser (..), EntityField (..),
-                                          Reply (..), Tweet (..), Unique (..),
-                                          User (..), UserName (..),
-                                          Validate (..))
-import           Util                    (whenJust)
-
-import           Configuration           (Config (..))
+import           Configuration            (Config (..))
 
 --------------------------------------------------------------------------------
 -- SQL Logic
@@ -87,7 +88,6 @@ dbUserToUser (Entity uid dbuser) = do
         , uProfile        = "To be implemented"
         }
 
-
 --------------------------------------------------------------------------------
 -- IO Logic
 --------------------------------------------------------------------------------
@@ -117,7 +117,20 @@ getTweetsByUser pool username =
 -- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
 getTweetById pool tweetId =
-    flip runSqlPersistMPool pool $ getTweetByIdDB tweetId
+    flip runSqlPersistMPool pool $ do
+        rootId <- findRootId tweetId
+        getTweetByIdDB rootId
+  where
+    findRootId :: DBTweetId -> SqlPersistM DBTweetId
+    findRootId dbTid = do
+        mDBTweet <- get dbTid
+        evalContT $ do
+            dbTweet <- mDBTweet !? throwM (TweetNotFound dbTid)
+            parentId <- dBTweetReplyTo dbTweet !? return dbTid
+            lift $ findRootId parentId
+        where
+            Nothing !? e = ContT $ const e
+            Just a  !? _    = ContT ($ a)
 
 -- | Get user by name
 getUserByName :: ConnectionPool -> UserName -> IO User

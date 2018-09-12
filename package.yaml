@@ -32,6 +32,7 @@ dependencies:
 - say
 - servant-server
 - string-conversions
+- transformers
 - warp
 
 ghc-options:

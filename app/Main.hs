@@ -2,7 +2,7 @@ module Main where
 
 import           RIO
 
-import           Server (runServer)
+import           Server (runTwitterServer)
 
 main :: IO ()
-main = runServer
+main = runTwitterServer
