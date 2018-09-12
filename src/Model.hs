@@ -82,7 +82,9 @@ data Mention = Mention {
 
 -- (TODO) Create User type
 data User = User
-    { uName           :: !UserName
+    { uId             :: !Int64
+    -- ^ UserId
+    , uName           :: !UserName
     -- ^ Name of the user
     , uNumberOfTweets :: !Int
     -- ^ Number of tweets
@@ -95,6 +97,7 @@ data User = User
     , uRetweets       :: !Int
     -- ^ Number of retweets
     , uProfile        :: !Text
+    -- ^ Short text describing the user
     } deriving Show
 --------------------------------------------------------------------------------
 -- TypeClasses
@@ -103,7 +106,7 @@ data User = User
 instance ToJSON Tweet where
     toJSON Tweet{..} =
         let tweetObj = object
-                [ "id"        .= tId
+                [ "tweet_id"  .= tId
                 , "text"      .= getTweetText tText
                 , "author"    .= getUserName tAuthor
                 , "createdAt" .= tCreatedAt
@@ -123,8 +126,8 @@ instance ToJSON User where
 
 instance ToJSON Mention where
     toJSON Mention{..} =
-        object [ "name" .= getUserName mName
-               , "id"   .= mId
+        object [ "user_name" .= getUserName mName
+               , "user_id"   .= mId
                ]
 
 --------------------------------------------------------------------------------
@@ -186,6 +189,7 @@ instance Arbitrary Tweet where
 
 instance Arbitrary User where
     arbitrary = do
+        uId   <- arbitrary
         uName <- elements testUserList
         uNumberOfTweets <- arbitrary
         uFollowers <- choose (1, 1000)

@@ -108,7 +108,8 @@ dbUserToUser :: Entity DBUser -> SqlPersistM User
 dbUserToUser (Entity uid dbuser) = do
     userTweets <- selectList [DBTweetAuthorId ==. uid] defaultTweetSelectOpt
     pure User
-        { uName           = UserName (dBUserName dbuser)
+        { uId             = fromSqlKey uid
+        , uName           = UserName (dBUserName dbuser)
         , uNumberOfTweets = length userTweets
         , uFollowers      = 0
         , uFollow         = 0
@@ -223,3 +224,5 @@ getLatestTweetId pool =
     flip runSqlPersistMPool pool $ do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
         return $ fromSqlKey . entityKey <$> mTweet
+
+-- | Get random Tweet
