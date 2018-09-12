@@ -12,20 +12,21 @@ module Lib
 
 import           RIO
 
+
+import           Control.Monad.Trans.Cont (ContT (..), evalContT)
 import           Database.Persist
 import           Database.Persist.Sqlite
+import           RIO.Time                 (getCurrentTime)
 
-import           RIO.Time
+import           Exceptions               (TwitterException (..))
+import           Model                    (Content (..), DBTweet (..),
+                                           DBTweetId, DBUser (..),
+                                           EntityField (..), Reply (..),
+                                           Tweet (..), Unique (..), User (..),
+                                           UserName (..), Validate (..))
+import           Util                     (whenJust)
 
-import           Exceptions              (TwitterException (..))
-import           Model                   (Content (..), DBTweet (..), DBTweetId,
-                                          DBUser (..), EntityField (..),
-                                          Reply (..), Tweet (..), Unique (..),
-                                          User (..), UserName (..),
-                                          Validate (..))
-import           Util                    (whenJust)
-
-import           Configuration           (Config (..))
+import           Configuration            (Config (..))
 
 --------------------------------------------------------------------------------
 -- SQL Logic
@@ -120,17 +121,17 @@ getTweetById pool tweetId =
         rootId <- findRootId tweetId
         getTweetByIdDB rootId
   where
-    -- Can make it better ConT?
     findRootId :: DBTweetId -> SqlPersistM DBTweetId
     findRootId dbTid = do
         mDBTweet <- get dbTid
-        case mDBTweet of
-            Nothing      -> throwM $ TweetNotFound dbTid
-            Just dbTweet -> 
-                case dBTweetReplyTo dbTweet of
-                    Nothing -> return dbTid
-                    Just parentId -> findRootId parentId
- 
+        evalContT $ do
+            dbTweet <- mDBTweet !? throwM (TweetNotFound dbTid)
+            parentId <- dBTweetReplyTo dbTweet !? return dbTid
+            lift $ findRootId parentId
+        where
+            Nothing !? e = ContT $ const e
+            Just a  !? _    = ContT ($ a)
+
 -- | Get user by name
 getUserByName :: ConnectionPool -> UserName -> IO User
 getUserByName pool userName =
