@@ -92,5 +92,5 @@ ignoreException = handle handleException
 insertRandomDataIntoEmptyDB :: Config -> IO ()
 insertRandomDataIntoEmptyDB cfg = do
     insertUsers cfg testUserList
-    tweetRandomly (cfgDevelopmentDBPath cfg) 100
+    tweetRandomly (cfgDevelopmentDBPath cfg) 200
 

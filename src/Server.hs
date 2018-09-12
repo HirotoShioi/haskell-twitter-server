@@ -22,16 +22,15 @@ import           Servant                  as S
 import           Api                      (Api, api)
 import           Configuration            (Config (..), defaultConfig)
 import           Exceptions               (TwitterException (..))
-import           Lib                      (getAllTweets, getTweetById,
-                                           getTweetsByUser, getUserByName,
-                                           insertUser)
+import           Lib                      (getTweetById, getTweetsByUser,
+                                           getUserByName, insertUser)
 import           Model                    (Tweet (..), User (..), UserName,
                                            ValidationException (..), migrateAll)
 
 -- | Server endpoints
 server :: ConnectionPool -> Config -> Server Api
-server pool config = getAllTweetsH pool
-    :<|> getTweetsByUserH pool
+server pool config =
+         getTweetsByUserH pool
     :<|> getUserProfileH pool
     :<|> createUserH pool config
     :<|> getTweetByIdH pool
@@ -39,10 +38,6 @@ server pool config = getAllTweetsH pool
 --------------------------------------------------------------------------------
 -- Endpoint handling
 --------------------------------------------------------------------------------
-
--- | Return all the tweets from database
-getAllTweetsH :: ConnectionPool -> S.Handler [Tweet]
-getAllTweetsH pool = liftIO $ getAllTweets pool
 
 -- | Get all the tweets from user
 getTweetsByUserH :: ConnectionPool -> UserName -> S.Handler [Tweet]

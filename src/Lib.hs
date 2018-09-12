@@ -1,8 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Lib
-    ( getAllTweets
-    , getTweetsByUser
+    ( getTweetsByUser
     , getTweetById
     , getUserByName
     , getLatestTweetId
@@ -121,14 +120,6 @@ dbUserToUser (Entity uid dbuser) = do
 --------------------------------------------------------------------------------
 -- IO Logic
 --------------------------------------------------------------------------------
-
--- | Get all tweets
-getAllTweets :: ConnectionPool -> IO [Tweet]
-getAllTweets pool =
-    flip runSqlPersistMPool pool $ do
-        dbtweets <- selectList [DBTweetReplyTo ==. Nothing] defaultTweetSelectOpt
-        -- Fix in the future!
-        mapM (dbTweetToTweet (toSqlKey 1)) dbtweets
 
 -- | Get tweets with username
 getTweetsByUser :: ConnectionPool -> UserName -> IO [Tweet]
