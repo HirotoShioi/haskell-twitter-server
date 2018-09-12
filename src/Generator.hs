@@ -21,7 +21,7 @@ import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, insertTweet,
                                           insertUser)
 import           Model                   (Tweet (..), UserName, migrateAll,
-                                          testUserList)
+                                          testUserList, TweetId(..))
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -62,8 +62,8 @@ replyRandomTweet pool = do
             randomTweet <- generate mkRandomTweet
             let userName = tAuthor randomTweet
                 content  = tText randomTweet
-            randomId <- generate $ elements [1 .. num]
-            ignoreException $ void $ insertTweet pool userName content (Just randomId) []
+            randomId <- generate $ elements [1 .. (getTweetId num)]
+            ignoreException $ void $ insertTweet pool userName content (Just $ TweetId randomId) []
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
