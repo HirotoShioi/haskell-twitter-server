@@ -44,6 +44,7 @@ Reply
 Mentions
     tweetId DBTweetId
     userId  DBUserId
+    UniqueMention tweetId userId
     mentionedAt UTCTime default=CURRENT_TIME
 |]
 
@@ -108,6 +109,7 @@ instance ToJSON Tweet where
                 , "createdAt" .= tCreatedAt
                 , "replyTo"   .= tReplyTo
                 , "replies"   .= tReplies
+                , "mentions"  .= tMentions
                 ]
         in object ["tweet" .= tweetObj]
 
@@ -118,6 +120,12 @@ instance ToJSON User where
                 , "numberOfTweets" .= uNumberOfTweets
                 ]
         in object ["user" .= userObj]
+
+instance ToJSON Mention where
+    toJSON Mention{..} =
+        object [ "name" .= getUserName mName
+               , "id"   .= mId
+               ]
 
 --------------------------------------------------------------------------------
 -- Arbitrary

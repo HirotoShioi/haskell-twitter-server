@@ -27,6 +27,7 @@ import           Model                   (Tweet (..), UserName, migrateAll,
 -- Random generator to facilitate data insertion
 --------------------------------------------------------------------------------
 -- FIX GENERATOR
+
 -- | Tweet type
 data TweetType =  Normal | Response
     deriving (Show)
@@ -50,8 +51,10 @@ insertRandomTweet pool = do
     ignoreException $ void $ insertTweet pool userName content Nothing []
 
 -- | Reply to random tweet
+-- Write better reply (add @Mention)
 replyRandomTweet :: ConnectionPool -> IO ()
 replyRandomTweet pool = do
+    -- Need to fetch random tweet
     latestTweetId <- getLatestTweetId pool
     case latestTweetId of
         Nothing   -> insertRandomTweet pool
