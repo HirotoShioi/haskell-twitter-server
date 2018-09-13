@@ -31,4 +31,4 @@ Twitter server written in Haskell. This is for studying purposes.
 - [ ] More endpoints!
 
 ### Need help
-- [ ] Create frontend with [elm](https://elm-lang.org/)
+- [ ] Create frontend with [elm](https://elm-lang.org/) or [purescript](http://www.purescript.org/)

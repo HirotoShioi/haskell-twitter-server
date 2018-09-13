@@ -67,6 +67,7 @@ getMostRecentBy getter tweet =
 -- This is polymorphic meaning we can sort the list with any given getter as long as it has
 -- Ord instance
 -- So many maps being used so I've assume efficiency is not great
+-- Since we're reversing the list, we might need diffList?
 sortTweetsBy :: (Ord a) => (Tweet -> a) -> [Tweet] -> [Tweet]
 sortTweetsBy _ []      = []
 sortTweetsBy getter ts = 
@@ -273,7 +274,7 @@ getUserLists :: ConnectionPool -> IO [(DBUserId, UserName)]
 getUserLists pool =
     flip runSqlPersistMPool pool $ do
         userLists <- selectList [] [Asc DBUserName]
-        let keys = map 
+        let userIdNames = map 
                 (\(Entity k u) -> (k, UserName $ dBUserName u))
                 userLists
-        return keys
+        return userIdNames

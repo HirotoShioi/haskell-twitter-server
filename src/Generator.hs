@@ -87,7 +87,7 @@ replyRandomTweet pool = do
 
             -- Insert into db
             let postUser = tAuthor randomReply
-            let mentionedUserIds = (map fst mentionedUsers)
+            let mentionedUserIds = map fst mentionedUsers
             ignoreException $
                 void $ insertTweet pool postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
 
