@@ -56,22 +56,23 @@ filterTweets userid tweet = tweet {tReplies = filterUnMentionedTweet userid (tRe
 -- | Get max number of an given Tweet
 getMostRecentBy :: (Ord a) => (Tweet -> a) -> Tweet -> (a, Tweet)
 getMostRecentBy getter tweet = 
-    let currentTweetTime = getter tweet
-        tweetIds = map (fst . getMostRecentBy getter) (tReplies tweet)
-        -- We definatly have currentId so this should never fail
-        maxSomething = maximum (currentTweetTime:tweetIds)
+    let currentSomething = getter tweet
+        tweetIds         = map (fst . getMostRecentBy getter) (tReplies tweet)
+        -- We definatly have currentSomething so this should never fail
+        maxSomething     = maximum (currentSomething:tweetIds)
 
     in (maxSomething, tweet)
 
--- | Sort tweet by a
+-- | Sort list of tweets with given getter a
 -- This is polymorphic meaning we can sort the list with any given getter as long as it has
 -- Ord instance
+-- So many maps being used so I've assume efficiency is not great
 sortTweetsBy :: (Ord a) => (Tweet -> a) -> [Tweet] -> [Tweet]
 sortTweetsBy _ []      = []
 sortTweetsBy getter ts = 
     let tweetWithSortedChild = map (\t -> t {tReplies = sortTweetsBy getter (tReplies t)}) ts
-        tweetsWithIds  = map (getMostRecentBy getter) tweetWithSortedChild
-        sortedTweets   = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
+        tweetsWithIds        = map (getMostRecentBy getter) tweetWithSortedChild
+        sortedTweets         = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
     in map snd sortedTweets
 
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
