@@ -79,6 +79,15 @@ sortTweetsBy getter ts =
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
 sortTweetsByCreatedAt = sortTweetsBy tCreatedAt
 
+-- | Check if the tweet is sorted with given getter
+isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool
+isTweetSorted _       []      = True
+isTweetSorted getter [x]      = isTweetSorted getter (tReplies x)
+isTweetSorted getter (a:b:ts) =
+       getter a >= getter b 
+    && isTweetSorted getter (concatMap tReplies [a,b]) 
+    && isTweetSorted getter ts
+
 --------------------------------------------------------------------------------
 -- SQL Logic
 --------------------------------------------------------------------------------
