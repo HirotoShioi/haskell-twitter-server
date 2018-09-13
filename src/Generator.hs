@@ -14,14 +14,15 @@ import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
 import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
-                                          vectorOf)
+                                          vectorOf, sublistOf)
 
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
-import           Lib                     (getLatestTweetId, insertTweet,
-                                          insertUser)
-import           Model                   (Tweet (..), UserName, migrateAll,
-                                          testUserList)
+import           Lib                     (getLatestTweetId, getTweetById,
+                                          insertTweet, insertUser, getUserLists)
+import           Model                   (Tweet (..), TweetId (..),
+                                          TweetText (..), UserName (..),
+                                          migrateAll, testUserList)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -59,11 +60,26 @@ replyRandomTweet pool = do
     case latestTweetId of
         Nothing   -> insertRandomTweet pool
         (Just num) -> do
-            randomTweet <- generate mkRandomTweet
-            let userName = tAuthor randomTweet
-                content  = tText randomTweet
-            randomId <- generate $ elements [1 .. num]
-            ignoreException $ void $ insertTweet pool userName content (Just randomId) []
+            -- Get random tweet
+            randomId <- generate $ elements [1 .. (getTweetId num)]
+            randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
+
+            -- Generate random reply
+            randomReply <- generate mkRandomTweet
+
+            -- Fetch list of users with their ids in tuple (UserName, UserId)
+            userLists <- getUserLists pool
+            mentionedUsers <- generate $ sublistOf userLists
+
+            -- Modify content
+            let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
+            let mentionText = foldr (\name acc -> "@" <> (getUserName name) <> " " <> acc) "" (map snd mentionedUsers)
+            let content = "@" <> parentAuthor <> " " <> mentionText <> getTweetText (tText randomReply)
+
+            -- Insert into db
+            let postUser = tAuthor randomReply
+            ignoreException $
+                void $ insertTweet pool postUser (TweetText content) (Just $ TweetId randomId) (map fst mentionedUsers)
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
@@ -89,8 +105,10 @@ ignoreException = handle handleException
         say $ tshow e
         return ()
 
-insertRandomDataIntoEmptyDB :: Config -> IO ()
-insertRandomDataIntoEmptyDB cfg = do
-    insertUsers cfg testUserList
-    tweetRandomly (cfgDevelopmentDBPath cfg) 100
-
+--- | Insert random data into data
+-- If true, it'll insert user data as well.
+insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
+insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do
+    when shouldInsertUsers $ 
+       insertUsers cfg testUserList
+    tweetRandomly (cfgDevelopmentDBPath cfg) numOfTweets

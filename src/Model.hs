@@ -56,10 +56,18 @@ newtype TweetText = TweetText
     { getTweetText :: Text
     } deriving (Show, Eq)
 
+newtype TweetId = TweetId
+    { getTweetId :: Int64
+    } deriving (Show, Eq)
+
+newtype UserId = UserId
+    { getUserId :: Int64
+    } deriving (Show, Eq)
+
 -- | Endpoint representaiton of DBTweet data
 -- Perhaps user lens just to practice them
 data Tweet = Tweet
-    { tId        :: !Int64
+    { tId        :: !TweetId
     -- ^ Int64 representation of tweet Id
     , tText      :: !TweetText
     -- ^ Content aka tweet itself
@@ -67,7 +75,7 @@ data Tweet = Tweet
     -- ^ Author of the tweet
     , tCreatedAt :: !UTCTime
     -- ^ Date in which the tweet was created at
-    , tReplyTo   :: !(Maybe Int64)
+    , tReplyTo   :: !(Maybe TweetId)
     -- ^ Mentions
     , tMentions  :: ![Mention]
     -- ^ Id of parent tweet
@@ -77,12 +85,14 @@ data Tweet = Tweet
 
 data Mention = Mention {
       mName :: !UserName
-    , mId   :: !Int64
+    , mId   :: !UserId
     } deriving Show
 
 -- (TODO) Create User type
 data User = User
-    { uName           :: !UserName
+    { uId             :: !UserId
+    -- ^ UserId
+    , uName           :: !UserName
     -- ^ Name of the user
     , uNumberOfTweets :: !Int
     -- ^ Number of tweets
@@ -95,6 +105,7 @@ data User = User
     , uRetweets       :: !Int
     -- ^ Number of retweets
     , uProfile        :: !Text
+    -- ^ Short text describing the user
     } deriving Show
 --------------------------------------------------------------------------------
 -- TypeClasses
@@ -103,28 +114,29 @@ data User = User
 instance ToJSON Tweet where
     toJSON Tweet{..} =
         let tweetObj = object
-                [ "id"        .= tId
-                , "text"      .= getTweetText tText
-                , "author"    .= getUserName tAuthor
-                , "createdAt" .= tCreatedAt
-                , "replyTo"   .= tReplyTo
-                , "replies"   .= tReplies
-                , "mentions"  .= tMentions
+                [ "tweet_id"   .= getTweetId tId
+                , "text"       .= getTweetText tText
+                , "author"     .= getUserName tAuthor
+                , "created_at" .= tCreatedAt
+                , "reply_to"   .= (getTweetId <$> tReplyTo)
+                , "replies"    .= tReplies
+                , "mentions"   .= tMentions
                 ]
         in object ["tweet" .= tweetObj]
 
+-- | Add more fields!
 instance ToJSON User where
     toJSON User{..} =
         let userObj = object
-                [ "username"       .= getUserName uName
-                , "numberOfTweets" .= uNumberOfTweets
+                [ "username"         .= getUserName uName
+                , "number_of_tweets" .= uNumberOfTweets
                 ]
         in object ["user" .= userObj]
 
 instance ToJSON Mention where
     toJSON Mention{..} =
-        object [ "name" .= getUserName mName
-               , "id"   .= mId
+        object [ "user_name" .= getUserName mName
+               , "user_id"   .= getUserId mId
                ]
 
 --------------------------------------------------------------------------------
@@ -136,6 +148,12 @@ instance Arbitrary TweetText where
 
 instance Arbitrary UserName where
     arbitrary = UserName <$> arbitrary
+
+instance Arbitrary TweetId where
+    arbitrary = TweetId <$> arbitrary
+
+instance Arbitrary UserId where
+    arbitrary = UserId <$> arbitrary
 
 instance Arbitrary Text where
     arbitrary = fromString <$> arbitrary
@@ -186,6 +204,7 @@ instance Arbitrary Tweet where
 
 instance Arbitrary User where
     arbitrary = do
+        uId   <- arbitrary
         uName <- elements testUserList
         uNumberOfTweets <- arbitrary
         uFollowers <- choose (1, 1000)
@@ -203,7 +222,7 @@ instance Arbitrary User where
 
 testUserList :: [UserName]
 testUserList = map UserName
-    ["Hiroto", "Hiroto.hs", "Ana"
+    ["Hiroto", "HumbleMumble", "Ana"
     , "Dudo", "Charles", "Alan", "McSherry"]
 
 --------------------------------------------------------------------------------

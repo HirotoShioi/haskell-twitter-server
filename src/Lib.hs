@@ -1,11 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Lib
-    ( getAllTweets
-    , getTweetsByUser
+    ( getTweetsByUser
     , getTweetById
     , getUserByName
     , getLatestTweetId
+    , getUserLists
     , insertTweet
     , insertUser
     ) where
@@ -28,13 +28,14 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
                                            Reply (..), Tweet (..),
                                            TweetText (..), Unique (..),
                                            User (..), UserName (..),
-                                           Validate (..))
+                                           Validate (..), UserId(..), TweetId(..))
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
 
+
 --------------------------------------------------------------------------------
--- SQL Logic
+-- Polishing logics (sort, filter)
 --------------------------------------------------------------------------------
 
 -- | Default SelectOpt
@@ -44,31 +45,46 @@ defaultTweetSelectOpt = [Desc DBTweetCreatedAt]
 filterUnMentionedTweet :: DBUserId -> [Tweet] -> [Tweet]
 filterUnMentionedTweet _ [] = []
 filterUnMentionedTweet userid (x:xs)
-    | fromSqlKey userid `elem` map mId (tMentions x) = 
-        x {tReplies = filterUnMentionedTweet userid (tReplies x)} : filterUnMentionedTweet userid xs
+    | UserId (fromSqlKey userid) `elem` map mId (tMentions x) = 
+        x {tReplies = filterUnMentionedTweet userid (tReplies x)}
+        : filterUnMentionedTweet userid xs
     | otherwise = filterUnMentionedTweet userid xs
 
 -- | This is pure, we can test this!
 filterTweets :: DBUserId -> Tweet -> Tweet
 filterTweets userid tweet = tweet {tReplies = filterUnMentionedTweet userid (tReplies tweet)}
 
+--------------------------------------------------------------------------------
+-- SQL Logic
+--------------------------------------------------------------------------------
+
+-- | Convert DBTweet record into Tweet type with replies
+dBTweetToTweetWithReplies :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
+dBTweetToTweetWithReplies = dbTweetToTweet True
+
+-- | Convert DBTWeet record into Tweet type without replies
+dBTweetToTweetWithoutReply :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
+dBTweetToTweetWithoutReply = dbTweetToTweet False
+
 -- | Convert DBTweet record into Tweet type
-dbTweetToTweet :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
-dbTweetToTweet userid (Entity tid dbt) = do
+dbTweetToTweet :: Bool -> DBUserId -> Entity DBTweet -> SqlPersistM Tweet
+dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
     eReplyList <- selectList [ReplyParent ==. tid] [Asc ReplyCreatedAt]
     let replyList = entityVal <$> eReplyList
-    replies    <- getTweetsByIdDB userid (map replyChild replyList)
+    replies    <- if shouldGetReplies
+                  then getTweetsByIdDB userid (map replyChild replyList)
+                  else return []
     mentions   <- getMentionList tid
     mUser      <- get $ dBTweetAuthorId dbt
     case mUser of
         Nothing -> throwM $ UserIdNotFound (dBTweetAuthorId dbt)
         Just user -> do
             let tweet = Tweet
-                    { tId        = fromSqlKey tid
+                    { tId        = TweetId $ fromSqlKey tid
                     , tText      = TweetText $ dBTweetText dbt
                     , tAuthor    = UserName $ dBUserName user
                     , tCreatedAt = dBTweetCreatedAt dbt
-                    , tReplyTo   = fromSqlKey <$> dBTweetReplyTo dbt
+                    , tReplyTo   = TweetId . fromSqlKey <$> dBTweetReplyTo dbt
                     , tMentions  = mentions
                     , tReplies   = replies
                     }
@@ -76,11 +92,12 @@ dbTweetToTweet userid (Entity tid dbt) = do
 
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
+    -- Get list of mentioned user's keys
     dbMentionList <- fmap (mentionsUserId . entityVal) <$> selectList [MentionsTweetId ==. tid] []
     mentionedUsers <- getMany dbMentionList
     let mentionList = map
             (\(key, user) ->
-                Mention { mName = UserName $ dBUserName user, mId = fromSqlKey key}
+                Mention { mName = UserName $ dBUserName user, mId = UserId $ fromSqlKey key}
             ) (M.toList mentionedUsers)
     return mentionList
 
@@ -90,7 +107,7 @@ getTweetByIdDB userid tweetNum = do
     mTweet <- getEntity tweetNum
     case mTweet of
         Nothing    -> throwM $ TweetNotFound tweetNum
-        Just tweet -> dbTweetToTweet userid tweet
+        Just tweet -> dBTweetToTweetWithReplies userid tweet
 
 getTweetsByIdDB :: DBUserId -> [DBTweetId] -> SqlPersistM [Tweet]
 getTweetsByIdDB userid = mapM (getTweetByIdDB userid)
@@ -108,7 +125,8 @@ dbUserToUser :: Entity DBUser -> SqlPersistM User
 dbUserToUser (Entity uid dbuser) = do
     userTweets <- selectList [DBTweetAuthorId ==. uid] defaultTweetSelectOpt
     pure User
-        { uName           = UserName (dBUserName dbuser)
+        { uId             = UserId $ fromSqlKey uid
+        , uName           = UserName (dBUserName dbuser)
         , uNumberOfTweets = length userTweets
         , uFollowers      = 0
         , uFollow         = 0
@@ -120,14 +138,6 @@ dbUserToUser (Entity uid dbuser) = do
 --------------------------------------------------------------------------------
 -- IO Logic
 --------------------------------------------------------------------------------
-
--- | Get all tweets
-getAllTweets :: ConnectionPool -> IO [Tweet]
-getAllTweets pool =
-    flip runSqlPersistMPool pool $ do
-        dbtweets <- selectList [DBTweetReplyTo ==. Nothing] defaultTweetSelectOpt
-        -- Fix in the future!
-        mapM (dbTweetToTweet (toSqlKey 1)) dbtweets
 
 -- | Get tweets with username
 getTweetsByUser :: ConnectionPool -> UserName -> IO [Tweet]
@@ -142,7 +152,7 @@ getTweetsByUser pool username =
                     , DBTweetReplyTo  ==. Nothing
                     ]
                     defaultTweetSelectOpt
-                mapM (dbTweetToTweet userId) dbts
+                mapM (dBTweetToTweetWithReplies userId) dbts
 
 -- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
@@ -170,10 +180,16 @@ getUserByName pool userName =
         dbUserToUser eDBUser
 
 -- | Insert a tweet
--- if it's an reply tweet, you'll need to provide the parent id with (Maybe Int64)
-insertTweet :: ConnectionPool -> UserName -> TweetText -> Maybe Int64 -> [Int64] -> IO Tweet
+-- Perhaps replace userName with userId?
+-- Needs validation on TweetText
+insertTweet :: ConnectionPool 
+            -> UserName
+            -> TweetText
+            -> Maybe TweetId
+            -> [UserId]
+            -> IO Tweet
 insertTweet pool postUser content mReplyToInt mentions = do
-    let mReplyTo = toSqlKey <$> mReplyToInt
+    let mReplyTo = toSqlKey . getTweetId <$> mReplyToInt
     flip runSqlPersistMPool pool $ do
         currTime  <- getCurrentTime
         ePostUser <- getUserByNameDB postUser
@@ -194,13 +210,13 @@ insertTweet pool postUser content mReplyToInt mentions = do
                 (get parentId)
 
         -- Update mention table
-        let filteredMentions = map toSqlKey $ nub mentions
+        let filteredMentions = map toSqlKey $ nub (map getUserId mentions)
         mentionedUserIds <- getMany filteredMentions
         let something = fst <$> M.toList mentionedUserIds
 
         mapM_ (\userId -> void $ insertUnique $ Mentions (entityKey edbt) userId currTime) something
 
-        dbTweetToTweet (entityKey ePostUser) edbt
+        dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
 -- | Insert an user
 insertUser :: ConnectionPool -> Config -> UserName -> IO User
@@ -217,9 +233,23 @@ insertUser pool config name =
                         eUser <- insertEntity $ DBUser userName
                         dbUserToUser eUser
 
+--------------------------------------------------------------------------------
+-- Generator related
+--------------------------------------------------------------------------------
+
 -- | Get most recent tweetId
-getLatestTweetId :: ConnectionPool -> IO (Maybe Int64)
+getLatestTweetId :: ConnectionPool -> IO (Maybe TweetId)
 getLatestTweetId pool =
     flip runSqlPersistMPool pool $ do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
-        return $ fromSqlKey . entityKey <$> mTweet
+        return $ TweetId . fromSqlKey . entityKey <$> mTweet
+
+-- | Get user ids
+getUserLists :: ConnectionPool -> IO [(UserId, UserName)]
+getUserLists pool =
+    flip runSqlPersistMPool pool $ do
+        userLists <- selectList [] [Asc DBUserName]
+        let keys = map 
+                (\(Entity k u) -> (UserId (fromSqlKey k), UserName $ dBUserName u))
+                userLists
+        return keys
