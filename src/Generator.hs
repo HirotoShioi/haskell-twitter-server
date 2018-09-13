@@ -9,20 +9,20 @@ module Generator
 
 import           RIO
 
+import           Configuration           (Config (..))
 import           Control.Monad.Logger    (runStderrLoggingT)
 import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
-import           Say                     (say)
-import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
-                                          vectorOf, sublistOf)
-
-import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, getTweetById,
-                                          insertTweet, insertUser, getUserLists)
+                                          getUserLists, insertTweet, insertUser)
 import           Model                   (Tweet (..), TweetId (..),
                                           TweetText (..), UserName (..),
                                           migrateAll, testUserList)
+import qualified RIO.Text                as T
+import           Say                     (say)
+import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
+                                          sublistOf, vectorOf)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -73,13 +73,23 @@ replyRandomTweet pool = do
 
             -- Modify content
             let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
-            let mentionText = foldr (\name acc -> "@" <> (getUserName name) <> " " <> acc) "" (map snd mentionedUsers)
-            let content = "@" <> parentAuthor <> " " <> mentionText <> getTweetText (tText randomReply)
+            let mentionedUserNames = map snd mentionedUsers
+            let mentionText = foldr (\name acc -> "@" <> (getUserName name) <> " " <> acc)
+                              mempty
+                              mentionedUserNames
+            let content = T.concat
+                    [ "@"
+                    , parentAuthor
+                    , " "
+                    , mentionText
+                    , getTweetText (tText randomReply)
+                    ]
 
             -- Insert into db
             let postUser = tAuthor randomReply
+            let mentionedUserIds = (map fst mentionedUsers)
             ignoreException $
-                void $ insertTweet pool postUser (TweetText content) (Just $ TweetId randomId) (map fst mentionedUsers)
+                void $ insertTweet pool postUser (TweetText content) (Just $ TweetId randomId) mentionedUserIds
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
@@ -109,6 +119,6 @@ ignoreException = handle handleException
 -- If true, it'll insert user data as well.
 insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do
-    when shouldInsertUsers $ 
+    when shouldInsertUsers $
        insertUsers cfg testUserList
     tweetRandomly (cfgDevelopmentDBPath cfg) numOfTweets
