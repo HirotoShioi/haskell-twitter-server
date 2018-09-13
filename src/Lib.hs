@@ -8,6 +8,7 @@ module Lib
     , getUserLists
     , insertTweet
     , insertUser
+    , isTweetSorted
     ) where
 
 import           RIO
