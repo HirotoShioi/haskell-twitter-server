@@ -188,7 +188,7 @@ insertTweet :: ConnectionPool
             -> Maybe DBTweetId
             -> [DBUserId]
             -> IO Tweet
-insertTweet pool postUser content mReplyTo mentions = do
+insertTweet pool postUser content mReplyTo mentions =
     flip runSqlPersistMPool pool $ do
         currTime  <- getCurrentTime
         ePostUser <- getUserByNameDB postUser
@@ -211,9 +211,9 @@ insertTweet pool postUser content mReplyTo mentions = do
         -- Update mention table
         let filteredMentions = map toSqlKey $ nub (map fromSqlKey mentions)
         mentionedUserIds <- getMany filteredMentions
-        let something = fst <$> M.toList mentionedUserIds
+        let userKeys = fst <$> M.toList mentionedUserIds
 
-        mapM_ (\userId -> void $ insertUnique $ Mentions (entityKey edbt) userId currTime) something
+        mapM_ (\userId -> void $ insertUnique $ Mentions (entityKey edbt) userId currTime) userKeys
 
         dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
