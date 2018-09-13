@@ -18,10 +18,11 @@ import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
 
 import           Configuration           (Config (..))
 import           Exceptions              (TwitterException (..))
-import           Lib                     (getLatestTweetId, insertTweet,
-                                          insertUser)
-import           Model                   (Tweet (..), UserName, migrateAll,
-                                          testUserList, TweetId(..))
+import           Lib                     (getLatestTweetId, getTweetById,
+                                          insertTweet, insertUser)
+import           Model                   (Tweet (..), TweetId (..),
+                                          TweetText (..), UserName (..),
+                                          migrateAll, testUserList)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -54,22 +55,32 @@ insertRandomTweet pool = do
 -- Write better reply (add @Mention)
 replyRandomTweet :: ConnectionPool -> IO ()
 replyRandomTweet pool = do
-    -- Need to fetch random tweet
+    -- Get latest tweet Id
     latestTweetId <- getLatestTweetId pool
     case latestTweetId of
         Nothing   -> insertRandomTweet pool
         (Just num) -> do
-            randomTweet <- generate mkRandomTweet
-            let userName = tAuthor randomTweet
-                content  = tText randomTweet
+            -- Get random Id
             randomId <- generate $ elements [1 .. (getTweetId num)]
-            ignoreException $ void $ insertTweet pool userName content (Just $ TweetId randomId) []
+            
+            -- Fetch an tweet with given random Id
+            randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
+
+            -- Generate an reply to an tweet
+            randomReply <- generate mkRandomTweet
+            let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
+            let postUser = tAuthor randomReply
+            let content = "@" <> parentAuthor <> " " <> getTweetText (tText randomReply)
+
+            -- Insert an reply
+            ignoreException $
+                void $ insertTweet pool postUser (TweetText content) (Just $ TweetId randomId) []
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
 mkRandomTweet = do
     randomTweet <- arbitrary :: Gen Tweet
-    return $ randomTweet { tReplyTo = Nothing, tReplies = []}
+    return $ randomTweet {tReplyTo = Nothing, tReplies = [], tMentions = []}
 
 -- | Insert Users into given databse
 insertUsers :: Config -> [UserName] -> IO ()
@@ -89,8 +100,10 @@ ignoreException = handle handleException
         say $ tshow e
         return ()
 
-insertRandomDataIntoEmptyDB :: Config -> IO ()
-insertRandomDataIntoEmptyDB cfg = do
-    insertUsers cfg testUserList
-    tweetRandomly (cfgDevelopmentDBPath cfg) 200
-
+--- | Insert random data into data
+-- If true, it'll insert user data as well.
+insertRandomDataIntoEmptyDB :: Config -> Int -> Bool -> IO ()
+insertRandomDataIntoEmptyDB cfg numOfTweets shouldInsertUsers = do
+    when shouldInsertUsers $ 
+       insertUsers cfg testUserList
+    tweetRandomly (cfgDevelopmentDBPath cfg) numOfTweets

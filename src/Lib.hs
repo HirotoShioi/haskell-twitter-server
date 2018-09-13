@@ -209,11 +209,13 @@ insertUser pool config name =
                         eUser <- insertEntity $ DBUser userName
                         dbUserToUser eUser
 
+--------------------------------------------------------------------------------
+-- Generator related
+--------------------------------------------------------------------------------
+
 -- | Get most recent tweetId
 getLatestTweetId :: ConnectionPool -> IO (Maybe TweetId)
 getLatestTweetId pool =
     flip runSqlPersistMPool pool $ do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
         return $ TweetId . fromSqlKey . entityKey <$> mTweet
-
--- | Get random Tweet
