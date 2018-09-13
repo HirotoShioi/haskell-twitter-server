@@ -114,21 +114,22 @@ data User = User
 instance ToJSON Tweet where
     toJSON Tweet{..} =
         let tweetObj = object
-                [ "tweet_id"  .= getTweetId tId
-                , "text"      .= getTweetText tText
-                , "author"    .= getUserName tAuthor
-                , "createdAt" .= tCreatedAt
-                , "replyTo"   .= (getTweetId <$> tReplyTo)
-                , "replies"   .= tReplies
-                , "mentions"  .= tMentions
+                [ "tweet_id"   .= getTweetId tId
+                , "text"       .= getTweetText tText
+                , "author"     .= getUserName tAuthor
+                , "created_at" .= tCreatedAt
+                , "reply_to"   .= (getTweetId <$> tReplyTo)
+                , "replies"    .= tReplies
+                , "mentions"   .= tMentions
                 ]
         in object ["tweet" .= tweetObj]
 
+-- | Add more fields!
 instance ToJSON User where
     toJSON User{..} =
         let userObj = object
-                [ "username"       .= getUserName uName
-                , "numberOfTweets" .= uNumberOfTweets
+                [ "username"         .= getUserName uName
+                , "number_of_tweets" .= uNumberOfTweets
                 ]
         in object ["user" .= userObj]
 
