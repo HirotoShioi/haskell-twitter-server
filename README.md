@@ -11,6 +11,8 @@ Twitter server written in Haskell. This is for studying purposes.
 - [x] Enforce UserName to only use latin-charcters
 - [x] Overall more data (User has only username)
 - [x] Follow tweet structure by mentions
+- [ ] Sort tweet appropriately
+- [ ] Fetch mentioned tweets
 - [ ] Use [lens](http://hackage.haskell.org/package/lens)
 - [ ] Apply ReaderT Config on Servant handlers (Read [here](https://haskell-servant.readthedocs.io/en/stable/cookbook/using-custom-monad/UsingCustomMonad.html))
 - [ ] Lookup Twitter API (Read [here](https://developer.twitter.com/))
