@@ -63,8 +63,8 @@ dBTweetToTweetWithReplies :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
 dBTweetToTweetWithReplies = dbTweetToTweet True
 
 -- | Convert DBTWeet record into Tweet type without replies
-dBTweetToTweetWithoutReply :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
-dBTweetToTweetWithoutReply = dbTweetToTweet False
+dBTweetToTweetWithoutReplies :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
+dBTweetToTweetWithoutReplies = dbTweetToTweet False
 
 -- | Convert DBTweet record into Tweet type
 dbTweetToTweet :: Bool -> DBUserId -> Entity DBTweet -> SqlPersistM Tweet
