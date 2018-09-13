@@ -14,7 +14,7 @@ import           RIO
 
 
 import           Control.Monad.Trans.Cont (ContT (..), evalContT)
-import           Data.List                (nub)
+import           Data.List                (nub, maximum, sortBy)
 import           Database.Persist
 import           Database.Persist.Sqlite
 import qualified RIO.Map                  as M
@@ -32,7 +32,6 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
-
 
 --------------------------------------------------------------------------------
 -- Polishing logics (sort, filter)
@@ -53,6 +52,31 @@ filterUnMentionedTweet userid (x:xs)
 -- | This is pure, we can test this!
 filterTweets :: DBUserId -> Tweet -> Tweet
 filterTweets userid tweet = tweet {tReplies = filterUnMentionedTweet userid (tReplies tweet)}
+
+-- | Get max number of an given Tweet
+getMostRecentBy :: (Ord a) => (Tweet -> a) -> Tweet -> (a, Tweet)
+getMostRecentBy getter tweet = 
+    let currentSomething = getter tweet
+        tweetIds         = map (fst . getMostRecentBy getter) (tReplies tweet)
+        -- We definatly have currentSomething so this should never fail
+        maxSomething     = maximum (currentSomething:tweetIds)
+
+    in (maxSomething, tweet)
+
+-- | Sort list of tweets with given getter a
+-- This is polymorphic meaning we can sort the list with any given getter as long as it has
+-- Ord instance
+-- So many maps being used so I've assume efficiency is not great
+sortTweetsBy :: (Ord a) => (Tweet -> a) -> [Tweet] -> [Tweet]
+sortTweetsBy _ []      = []
+sortTweetsBy getter ts = 
+    let tweetWithSortedChild = map (\t -> t {tReplies = sortTweetsBy getter (tReplies t)}) ts
+        tweetsWithIds        = map (getMostRecentBy getter) tweetWithSortedChild
+        sortedTweets         = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
+    in map snd sortedTweets
+
+sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
+sortTweetsByCreatedAt = sortTweetsBy tCreatedAt
 
 --------------------------------------------------------------------------------
 -- SQL Logic
@@ -152,7 +176,8 @@ getTweetsByUser pool username =
                     , DBTweetReplyTo  ==. Nothing
                     ]
                     defaultTweetSelectOpt
-                mapM (dBTweetToTweetWithReplies userId) dbts
+                unsortedTweets <- mapM (dBTweetToTweetWithReplies userId) dbts
+                return $ sortTweetsByCreatedAt unsortedTweets
 
 -- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
