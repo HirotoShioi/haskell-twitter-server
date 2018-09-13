@@ -13,7 +13,7 @@ import           RIO
 import           Data.Aeson              (ToJSON (..), object, (.=))
 import           Data.Char               (isAscii)
 
-import           Database.Persist.Sqlite (Key, toSqlKey)
+import           Database.Persist.Sqlite (Key, toSqlKey, fromSqlKey)
 import           Database.Persist.TH
 
 import qualified RIO.Text as T
@@ -56,18 +56,10 @@ newtype TweetText = TweetText
     { getTweetText :: Text
     } deriving (Show, Eq)
 
-newtype TweetId = TweetId
-    { getTweetId :: Int64
-    } deriving (Show, Eq)
-
-newtype UserId = UserId
-    { getUserId :: Int64
-    } deriving (Show, Eq)
-
 -- | Endpoint representaiton of DBTweet data
 -- Perhaps user lens just to practice them
 data Tweet = Tweet
-    { tId        :: !TweetId
+    { tId        :: !DBTweetId
     -- ^ Int64 representation of tweet Id
     , tText      :: !TweetText
     -- ^ Content aka tweet itself
@@ -75,7 +67,7 @@ data Tweet = Tweet
     -- ^ Author of the tweet
     , tCreatedAt :: !UTCTime
     -- ^ Date in which the tweet was created at
-    , tReplyTo   :: !(Maybe TweetId)
+    , tReplyTo   :: !(Maybe DBTweetId)
     -- ^ Mentions
     , tMentions  :: ![Mention]
     -- ^ Id of parent tweet
@@ -85,12 +77,12 @@ data Tweet = Tweet
 
 data Mention = Mention {
       mName :: !UserName
-    , mId   :: !UserId
+    , mId   :: !DBUserId
     } deriving Show
 
 -- (TODO) Create User type
 data User = User
-    { uId             :: !UserId
+    { uId             :: !DBUserId
     -- ^ UserId
     , uName           :: !UserName
     -- ^ Name of the user
@@ -114,11 +106,11 @@ data User = User
 instance ToJSON Tweet where
     toJSON Tweet{..} =
         let tweetObj = object
-                [ "tweet_id"   .= getTweetId tId
+                [ "tweet_id"   .= fromSqlKey tId
                 , "text"       .= getTweetText tText
                 , "author"     .= getUserName tAuthor
                 , "created_at" .= tCreatedAt
-                , "reply_to"   .= (getTweetId <$> tReplyTo)
+                , "reply_to"   .= (fromSqlKey <$> tReplyTo)
                 , "replies"    .= tReplies
                 , "mentions"   .= tMentions
                 ]
@@ -136,7 +128,7 @@ instance ToJSON User where
 instance ToJSON Mention where
     toJSON Mention{..} =
         object [ "user_name" .= getUserName mName
-               , "user_id"   .= getUserId mId
+               , "user_id"   .= fromSqlKey mId
                ]
 
 --------------------------------------------------------------------------------
@@ -148,12 +140,6 @@ instance Arbitrary TweetText where
 
 instance Arbitrary UserName where
     arbitrary = UserName <$> arbitrary
-
-instance Arbitrary TweetId where
-    arbitrary = TweetId <$> arbitrary
-
-instance Arbitrary UserId where
-    arbitrary = UserId <$> arbitrary
 
 instance Arbitrary Text where
     arbitrary = fromString <$> arbitrary
@@ -170,6 +156,9 @@ instance Arbitrary UTCTime where
                (fromIntegral randomTime)
 
 instance Arbitrary (Key DBTweet) where
+    arbitrary = toSqlKey <$> arbitrary
+
+instance Arbitrary DBUserId where
     arbitrary = toSqlKey <$> arbitrary
 
 instance Arbitrary Mention where

@@ -16,9 +16,9 @@ import           Database.Persist.Sqlite
 import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, getTweetById,
                                           getUserLists, insertTweet, insertUser)
-import           Model                   (Tweet (..), TweetId (..),
-                                          TweetText (..), UserName (..),
-                                          migrateAll, testUserList)
+import           Model                   (Tweet (..), TweetText (..),
+                                          UserName (..), migrateAll,
+                                          testUserList)
 import qualified RIO.Text                as T
 import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
@@ -61,20 +61,20 @@ replyRandomTweet pool = do
         Nothing   -> insertRandomTweet pool
         (Just num) -> do
             -- Get random tweet
-            randomId <- generate $ elements [1 .. (getTweetId num)]
+            randomId <- generate $ elements [1 .. (fromSqlKey num)]
             randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
 
             -- Generate random reply
             randomReply <- generate mkRandomTweet
 
-            -- Fetch list of users with their ids in tuple (UserName, UserId)
+            -- Fetch list of users with their ids in tuple (UserName, DBUserId)
             userLists <- getUserLists pool
             mentionedUsers <- generate $ sublistOf userLists
 
             -- Modify content
             let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
             let mentionedUserNames = map snd mentionedUsers
-            let mentionText = foldr (\name acc -> "@" <> (getUserName name) <> " " <> acc)
+            let mentionText = foldr (\name acc -> "@" <> getUserName name <> " " <> acc)
                               mempty
                               mentionedUserNames
             let content = T.concat
@@ -89,7 +89,7 @@ replyRandomTweet pool = do
             let postUser = tAuthor randomReply
             let mentionedUserIds = (map fst mentionedUsers)
             ignoreException $
-                void $ insertTweet pool postUser (TweetText content) (Just $ TweetId randomId) mentionedUserIds
+                void $ insertTweet pool postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
