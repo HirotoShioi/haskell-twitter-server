@@ -15,9 +15,11 @@ import           RIO
 
 import           Control.Lens             ((%~))
 import           Control.Monad.Trans.Cont (ContT (..), evalContT)
+
 import           Data.List                (maximum, nub, sortBy)
 import           Database.Persist
 import           Database.Persist.Sqlite
+
 import qualified RIO.Map                  as M
 
 import           RIO.Time                 (getCurrentTime)
@@ -29,7 +31,8 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
                                            Reply (..), Tweet (..),
                                            TweetText (..), Unique (..),
                                            User (..), UserName (..),
-                                           Validate (..), tReplies, tMentions, mId)
+                                           Validate (..), mId, tMentions,
+                                           tReplies)
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
@@ -129,7 +132,7 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
     -- Get list of mentioned user's keys
-    dbMentionList <- fmap (mentionsUserId . entityVal) <$> selectList [MentionsTweetId ==. tid] []
+    dbMentionList <- map (mentionsUserId . entityVal) <$> selectList [MentionsTweetId ==. tid] []
     mentionedUsers <- getMany dbMentionList
     let mentionList = map
             (\(key, user) ->

@@ -12,15 +12,17 @@ import           RIO
 import           Configuration           (Config (..))
 import           Control.Lens            ((&), (.~))
 import           Control.Monad.Logger    (runStderrLoggingT)
+
 import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
+
 import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, getTweetById,
                                           getUserLists, insertTweet, insertUser)
 import           Model                   (Tweet (..), TweetText (..),
-                                          UserName (..), migrateAll, tAuthor,
-                                          tReplies, tReplyTo, tText,
-                                          testUserList)
+                                          UserName (..), ValidationException,
+                                          migrateAll, tAuthor, tReplies,
+                                          tReplyTo, tText, testUserList, tMentions)
 import qualified RIO.Text                as T
 import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
@@ -85,7 +87,7 @@ replyRandomTweet pool = do
                     , parentAuthor
                     , " "
                     , mentionText
-                    , getTweetText (randomReply ^. tText)
+                    , getTweetText $ randomReply ^. tText
                     ]
 
             -- Insert into db
@@ -101,6 +103,7 @@ mkRandomTweet = do
     return $ randomTweet
         & tReplyTo .~ Nothing
         & tReplies .~ []
+        & tMentions .~ []
 
 -- | Insert Users into given databse
 insertUsers :: Config -> [UserName] -> IO ()
@@ -113,9 +116,14 @@ insertUsers config users = do
 
 -- | Exception handling for generator
 ignoreException :: IO () -> IO ()
-ignoreException = handle handleException
+ignoreException action = catches action 
+    [Handler handleTwitterException, Handler handleValidationException]
   where
-    handleException :: TwitterException -> IO ()
+    handleTwitterException :: TwitterException -> IO ()
+    handleTwitterException = handleException
+    handleValidationException :: ValidationException -> IO ()
+    handleValidationException = handleException
+    handleException :: (Exception e) => e -> IO ()
     handleException e = do
         say $ tshow e
         return ()

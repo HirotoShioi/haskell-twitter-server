@@ -213,7 +213,7 @@ instance Arbitrary User where
         _uFollow         <- choose (1, 1000)
         _uLikes          <- choose (1, 100)
         _uRetweets       <- choose (1, 1000)
-        _uProfile        <- elements 
+        _uProfile        <- elements
            [ "I'm mathmatician"
            , "I'm from Kyoto"
            , "I drunk too many yesterday"
