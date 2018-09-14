@@ -32,7 +32,7 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
                                            TweetText (..), Unique (..),
                                            User (..), UserName (..),
                                            Validate (..), mId, tMentions,
-                                           tReplies)
+                                           tReplies, tCreatedAt)
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
@@ -82,7 +82,7 @@ sortTweetsBy getter ts =
 
 -- | Sort list of tweets with field "tCreatedAt"
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
-sortTweetsByCreatedAt = sortTweetsBy _tCreatedAt
+sortTweetsByCreatedAt = sortTweetsBy (^. tCreatedAt)
 
 -- | Check if the tweet is sorted with given getter
 isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool

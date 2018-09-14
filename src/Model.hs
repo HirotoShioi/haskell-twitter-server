@@ -26,7 +26,10 @@ import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
 
 import           Configuration           (Config (..))
 
--- | Database Schema
+--------------------------------------------------------------------------------
+-- Database Schema
+--------------------------------------------------------------------------------
+
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 DBUser
     name Text
@@ -49,14 +52,21 @@ Mentions
     mentionedAt UTCTime default=CURRENT_TIME
 |]
 
+--------------------------------------------------------------------------------
+-- DataTypes
+--------------------------------------------------------------------------------
+
+-- | User name
 newtype UserName = UserName
     { getUserName :: Text
     } deriving (Show, Eq)
 
+-- | Tweet text
 newtype TweetText = TweetText
     { getTweetText :: Text
     } deriving (Show, Eq)
 
+-- | Mentions
 data Mention = Mention {
       _mName :: !UserName
     , _mId   :: !DBUserId
@@ -85,7 +95,7 @@ data Tweet = Tweet
 
 makeLenses ''Tweet
 
--- (TODO) Create User type
+-- | User datatype
 data User = User
     { _uId             :: !DBUserId
     -- ^ UserId
