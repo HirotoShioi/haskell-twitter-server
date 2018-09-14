@@ -77,6 +77,7 @@ sortTweetsBy getter ts =
         sortedTweets         = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
     in map snd sortedTweets
 
+-- | Sort list of tweets with field "tCreatedAt"
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
 sortTweetsByCreatedAt = sortTweetsBy tCreatedAt
 
