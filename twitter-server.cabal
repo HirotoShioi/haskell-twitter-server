@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d196e112dbbd90bdc34f7d7649bac974516b04813408f684bb7af97071a86d3a
+-- hash: 11f4025fc73bc4afd2447b42cf64d72d6211068276125509cd2623f54bb3d25d
 
 name:           twitter-server
 version:        0.1.0.0
@@ -44,6 +44,7 @@ library
       QuickCheck
     , aeson
     , base >=4.7 && <5
+    , lens
     , monad-logger
     , persistent
     , persistent-sqlite
@@ -69,6 +70,7 @@ executable twitter-server-exe
       QuickCheck
     , aeson
     , base >=4.7 && <5
+    , lens
     , monad-logger
     , persistent
     , persistent-sqlite
@@ -96,6 +98,7 @@ test-suite twitter-server-test
       QuickCheck
     , aeson
     , base >=4.7 && <5
+    , lens
     , monad-logger
     , persistent
     , persistent-sqlite
