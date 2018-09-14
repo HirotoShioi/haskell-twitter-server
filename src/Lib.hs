@@ -244,7 +244,8 @@ insertTweet pool postUser content mReplyTo mentions =
                 (throwM $ ParentTweetNotFound parentId)
                 (\tweet -> do
                     insert_ $ Reply parentId (entityKey edbt) currTime
-                    void $ insertUnique $ Mentions (entityKey edbt) (dBTweetAuthorId tweet) currTime
+                    void $ insertUnique 
+                         $ Mentions (entityKey edbt) (dBTweetAuthorId tweet) currTime
                 )
                 (get parentId)
 
@@ -253,7 +254,8 @@ insertTweet pool postUser content mReplyTo mentions =
         mentionedUserIds <- getMany filteredMentions
         let userKeys = fst <$> M.toList mentionedUserIds
 
-        mapM_ (\userId -> void $ insertUnique $ Mentions (entityKey edbt) userId currTime) userKeys
+        forM_ userKeys $ \userId -> 
+            void $ insertUnique $ Mentions (entityKey edbt) userId currTime
 
         dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
