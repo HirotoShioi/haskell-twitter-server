@@ -22,7 +22,7 @@ import           Model                   (Tweet (..), TweetText (..),
 import qualified RIO.Text                as T
 import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
-                                          sublistOf, vectorOf)
+                                          sublistOf, vectorOf, choose)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -69,7 +69,8 @@ replyRandomTweet pool = do
 
             -- Fetch list of users with their ids in tuple (UserName, DBUserId)
             userLists <- getUserLists pool
-            mentionedUsers <- generate $ sublistOf userLists
+            numOfUsers <- generate $ choose (0, 3)
+            let mentionedUsers = take numOfUsers userLists
 
             -- Modify content
             let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
