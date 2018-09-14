@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDecls  #-}
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -8,15 +9,16 @@
 
 module Model where
 
-import           RIO
+import           RIO                     hiding ((^.))
 
+import           Control.Lens            (makeLenses, (^.))
 import           Data.Aeson              (ToJSON (..), object, (.=))
 import           Data.Char               (isAscii)
 
-import           Database.Persist.Sqlite (Key, toSqlKey, fromSqlKey)
+import           Database.Persist.Sqlite (Key, fromSqlKey, toSqlKey)
 import           Database.Persist.TH
 
-import qualified RIO.Text as T
+import qualified RIO.Text                as T
 import           RIO.Time                (UTCTime (..), fromGregorian)
 
 import           Servant                 (FromHttpApiData (..))
@@ -25,7 +27,10 @@ import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
 
 import           Configuration           (Config (..))
 
--- | Database Schema
+--------------------------------------------------------------------------------
+-- Database Schema
+--------------------------------------------------------------------------------
+
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 DBUser
     name Text
@@ -48,93 +53,106 @@ Mentions
     mentionedAt UTCTime default=CURRENT_TIME
 |]
 
+--------------------------------------------------------------------------------
+-- DataTypes
+--------------------------------------------------------------------------------
+
+-- | User name
 newtype UserName = UserName
     { getUserName :: Text
     } deriving (Show, Eq)
 
+-- | Tweet text
 newtype TweetText = TweetText
     { getTweetText :: Text
     } deriving (Show, Eq)
 
+-- | Mentions
+data Mention = Mention {
+      _mName :: !UserName
+    , _mId   :: !DBUserId
+    } deriving Show
+
+makeLenses ''Mention
+
 -- | Endpoint representaiton of DBTweet data
 -- Perhaps user lens just to practice them
 data Tweet = Tweet
-    { tId        :: !DBTweetId
+    { _tId        :: !DBTweetId
     -- ^ Int64 representation of tweet Id
-    , tText      :: !TweetText
+    , _tText      :: !TweetText
     -- ^ Content aka tweet itself
-    , tAuthor    :: !UserName
+    , _tAuthor    :: !UserName
     -- ^ Author of the tweet
-    , tCreatedAt :: !UTCTime
+    , _tCreatedAt :: !UTCTime
     -- ^ Date in which the tweet was created at
-    , tReplyTo   :: !(Maybe DBTweetId)
+    , _tReplyTo   :: !(Maybe DBTweetId)
     -- ^ Mentions
-    , tMentions  :: ![Mention]
+    , _tMentions  :: ![Mention]
     -- ^ Id of parent tweet
-    , tReplies   :: ![Tweet]
+    , _tReplies   :: ![Tweet]
     -- ^ List of replies
     } deriving (Show)
 
-data Mention = Mention {
-      mName :: !UserName
-    , mId   :: !DBUserId
-    } deriving Show
+makeLenses ''Tweet
 
--- (TODO) Create User type
+-- | User datatype
 data User = User
-    { uId             :: !DBUserId
+    { _uId             :: !DBUserId
     -- ^ UserId
-    , uName           :: !UserName
+    , _uName           :: !UserName
     -- ^ Name of the user
-    , uNumberOfTweets :: !Int
+    , _uNumberOfTweets :: !Int
     -- ^ Number of tweets
-    , uFollowers      :: !Int
+    , _uFollowers      :: !Int
     -- ^ Number of followers
-    , uFollow         :: !Int
+    , _uFollow         :: !Int
     -- ^ Number of follows
-    , uLikes          :: !Int
+    , _uLikes          :: !Int
     -- ^ Number of tweets user liked
-    , uRetweets       :: !Int
+    , _uRetweets       :: !Int
     -- ^ Number of retweets
-    , uProfile        :: !Text
+    , _uProfile        :: !Text
     -- ^ Short text describing the user
     } deriving Show
+
+makeLenses ''User
 
 --------------------------------------------------------------------------------
 -- TypeClasses
 --------------------------------------------------------------------------------
 
 instance ToJSON Tweet where
-    toJSON Tweet{..} =
+    toJSON t =
         let tweetObj = object
-                [ "tweet_id"   .= fromSqlKey tId
-                , "text"       .= getTweetText tText
-                , "author"     .= getUserName tAuthor
-                , "created_at" .= tCreatedAt
-                , "reply_to"   .= (fromSqlKey <$> tReplyTo)
-                , "replies"    .= tReplies
-                , "mentions"   .= tMentions
+                [ "tweet_id"   .= fromSqlKey (t ^. tId)
+                , "text"       .= getTweetText (t ^. tText)
+                , "author"     .= getUserName (t ^. tAuthor)
+                , "created_at" .= (t ^. tCreatedAt)
+                , "reply_to"   .= (fromSqlKey <$> t ^. tReplyTo)
+                , "replies"    .= (t ^. tReplies)
+                , "mentions"   .= (t ^. tMentions)
                 ]
         in object ["tweet" .= tweetObj]
 
 instance ToJSON User where
-    toJSON User{..} =
+    toJSON u =
         let userObj = object
-                [ "user_id"             .= fromSqlKey uId
-                , "username"            .= getUserName uName
-                , "number_of_tweets"    .= uNumberOfTweets
-                , "number_of_followers" .= uFollowers
-                , "number_of_follows"   .= uFollow
-                , "number_of_likes"     .= uLikes
-                , "number_of_retweets"  .= uRetweets
-                , "profile"             .= uProfile
+                [ "user_id"             .= fromSqlKey (u ^. uId)
+                , "username"            .= getUserName (u ^. uName)
+                , "number_of_tweets"    .= (u ^. uNumberOfTweets)
+                , "number_of_followers" .= (u ^. uFollowers)
+                , "number_of_follows"   .= (u ^. uFollow)
+                , "number_of_likes"     .= (u ^. uLikes)
+                , "number_of_retweets"  .= (u ^. uRetweets)
+                , "profile"             .= (u ^. uProfile)
                 ]
         in object ["user" .= userObj]
 
 instance ToJSON Mention where
-    toJSON Mention{..} =
-        object [ "user_name" .= getUserName mName
-               , "user_id"   .= fromSqlKey mId
+    toJSON m =
+        object [ "user_name" .= getUserName (m ^. mName)
+               , "user_id"   .= fromSqlKey (m ^. mId)
                ]
 
 --------------------------------------------------------------------------------
@@ -150,7 +168,6 @@ instance Arbitrary UserName where
 instance Arbitrary Text where
     arbitrary = fromString <$> arbitrary
 
--- https://gist.github.com/agrafix/2b48ec069693e3ab851e
 instance Arbitrary UTCTime where
     arbitrary =
         do randomDay   <- choose (1, 29) :: Gen Int
@@ -169,15 +186,15 @@ instance Arbitrary DBUserId where
 
 instance Arbitrary Mention where
     arbitrary = do
-        mName <- elements testUserList
-        mId   <- arbitrary
+        _mName <- elements testUserList
+        _mId   <- arbitrary
 
         pure Mention{..}
 
 instance Arbitrary Tweet where
     arbitrary = do
-        tId        <- arbitrary
-        tText      <- TweetText <$> elements
+        _tId        <- arbitrary
+        _tText      <- TweetText <$> elements
             [ "My first tweet"
             , "Today is rainy day"
             , "My shoulder hurts"
@@ -188,31 +205,32 @@ instance Arbitrary Tweet where
             , "Haskell in Barbados!"
             , "Alan is drunk!"
             ]
-        tAuthor    <- elements testUserList
-        tCreatedAt <- arbitrary
-        tReplyTo   <- arbitrary
-        tMentions  <- arbitrary
-        listLen    <- choose (0,2)
-        tReplies   <- vectorOf listLen arbitrary
+        _tAuthor    <- elements testUserList
+        _tCreatedAt <- arbitrary
+        _tReplyTo   <- arbitrary
+        _tMentions  <- arbitrary
+        listLen     <- choose (0,2)
+        _tReplies   <- vectorOf listLen arbitrary
 
         pure Tweet{..}
 
 instance Arbitrary User where
     arbitrary = do
-        uId   <- arbitrary
-        uName <- elements testUserList
-        uNumberOfTweets <- arbitrary
-        uFollowers <- choose (1, 1000)
-        uFollow    <- choose (1, 1000)
-        uLikes     <- choose (1, 100)
-        uRetweets  <- choose (1, 1000)
-        uProfile   <- elements [ "I'm mathmatician"
-                               , "I'm from Kyoto"
-                               , "I drunk too many yesterday"
-                               , "Geocachin' everyday"
-                               , "京都のHaskeller"
-                               , "Hello from Barbados"
-                               ]
+        _uId             <- arbitrary
+        _uName           <- elements testUserList
+        _uNumberOfTweets <- arbitrary
+        _uFollowers      <- choose (1, 1000)
+        _uFollow         <- choose (1, 1000)
+        _uLikes          <- choose (1, 100)
+        _uRetweets       <- choose (1, 1000)
+        _uProfile        <- elements
+           [ "I'm mathmatician"
+           , "I'm from Kyoto"
+           , "I drunk too many yesterday"
+           , "Geocachin' everyday"
+           , "京都のHaskeller"
+           , "Hello from Barbados"
+           ]
         pure User{..}
 
 testUserList :: [UserName]

@@ -10,19 +10,23 @@ module Generator
 import           RIO
 
 import           Configuration           (Config (..))
+import           Control.Lens            ((&), (.~))
 import           Control.Monad.Logger    (runStderrLoggingT)
+
 import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
+
 import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, getTweetById,
                                           getUserLists, insertTweet, insertUser)
 import           Model                   (Tweet (..), TweetText (..),
-                                          UserName (..), migrateAll,
-                                          testUserList)
+                                          UserName (..), ValidationException,
+                                          migrateAll, tAuthor, tReplies,
+                                          tReplyTo, tText, testUserList, tMentions)
 import qualified RIO.Text                as T
 import           Say                     (say)
-import           Test.QuickCheck         (Gen, arbitrary, elements, generate,
-                                          sublistOf, vectorOf, choose)
+import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
+                                          generate, vectorOf)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -47,8 +51,8 @@ tweetRandomly sqliteFile num = do
 insertRandomTweet :: ConnectionPool -> IO ()
 insertRandomTweet pool = do
     randomTweet <- generate mkRandomTweet
-    let userName = tAuthor randomTweet
-        content  = tText randomTweet
+    let userName = randomTweet ^. tAuthor
+        content  = randomTweet ^. tText
     ignoreException $ void $ insertTweet pool userName content Nothing []
 
 -- | Reply to random tweet
@@ -73,7 +77,7 @@ replyRandomTweet pool = do
             let mentionedUsers = take numOfUsers userLists
 
             -- Modify content
-            let parentAuthor = getUserName $ tAuthor randomlyFetchedTweet
+            let parentAuthor = getUserName $ randomlyFetchedTweet ^. tAuthor
             let mentionedUserNames = map snd mentionedUsers
             let mentionText = foldr (\name acc -> "@" <> getUserName name <> " " <> acc)
                               mempty
@@ -83,11 +87,11 @@ replyRandomTweet pool = do
                     , parentAuthor
                     , " "
                     , mentionText
-                    , getTweetText (tText randomReply)
+                    , getTweetText $ randomReply ^. tText
                     ]
 
             -- Insert into db
-            let postUser = tAuthor randomReply
+            let postUser = randomReply ^. tAuthor
             let mentionedUserIds = map fst mentionedUsers
             ignoreException $
                 void $ insertTweet pool postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
@@ -96,7 +100,10 @@ replyRandomTweet pool = do
 mkRandomTweet :: Gen Tweet
 mkRandomTweet = do
     randomTweet <- arbitrary :: Gen Tweet
-    return $ randomTweet { tReplyTo = Nothing, tReplies = []}
+    return $ randomTweet
+        & tReplyTo .~ Nothing
+        & tReplies .~ []
+        & tMentions .~ []
 
 -- | Insert Users into given databse
 insertUsers :: Config -> [UserName] -> IO ()
@@ -109,9 +116,14 @@ insertUsers config users = do
 
 -- | Exception handling for generator
 ignoreException :: IO () -> IO ()
-ignoreException = handle handleException
+ignoreException action = catches action 
+    [Handler handleTwitterException, Handler handleValidationException]
   where
-    handleException :: TwitterException -> IO ()
+    handleTwitterException :: TwitterException -> IO ()
+    handleTwitterException = handleException
+    handleValidationException :: ValidationException -> IO ()
+    handleValidationException = handleException
+    handleException :: (Exception e) => e -> IO ()
     handleException e = do
         say $ tshow e
         return ()

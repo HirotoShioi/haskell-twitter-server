@@ -13,11 +13,13 @@ module Lib
 
 import           RIO
 
-
+import           Control.Lens             ((%~))
 import           Control.Monad.Trans.Cont (ContT (..), evalContT)
-import           Data.List                (nub, maximum, sortBy)
+
+import           Data.List                (maximum, nub, sortBy)
 import           Database.Persist
 import           Database.Persist.Sqlite
+
 import qualified RIO.Map                  as M
 
 import           RIO.Time                 (getCurrentTime)
@@ -29,7 +31,8 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
                                            Reply (..), Tweet (..),
                                            TweetText (..), Unique (..),
                                            User (..), UserName (..),
-                                           Validate (..))
+                                           Validate (..), mId, tMentions,
+                                           tReplies, tCreatedAt)
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
@@ -45,20 +48,20 @@ defaultTweetSelectOpt = [Desc DBTweetCreatedAt]
 filterUnMentionedTweet :: DBUserId -> [Tweet] -> [Tweet]
 filterUnMentionedTweet _ [] = []
 filterUnMentionedTweet userid (x:xs)
-    | userid `elem` map mId (tMentions x) = 
-        x {tReplies = filterUnMentionedTweet userid (tReplies x)}
-        : filterUnMentionedTweet userid xs
+    | userid `elem` map (^. mId) (x ^. tMentions) =
+        [x & tReplies %~ filterUnMentionedTweet userid]
+        <> filterUnMentionedTweet userid xs
     | otherwise = filterUnMentionedTweet userid xs
 
 -- | This is pure, we can test this!
 filterTweets :: DBUserId -> Tweet -> Tweet
-filterTweets userid tweet = tweet {tReplies = filterUnMentionedTweet userid (tReplies tweet)}
+filterTweets userid tweet = tweet & tReplies %~ filterUnMentionedTweet userid
 
 -- | Get max number of an given Tweet
 getMostRecentBy :: (Ord a) => (Tweet -> a) -> Tweet -> (a, Tweet)
-getMostRecentBy getter tweet = 
+getMostRecentBy getter tweet =
     let currentSomething = getter tweet
-        tweetIds         = map (fst . getMostRecentBy getter) (tReplies tweet)
+        tweetIds         = map (fst . getMostRecentBy getter) (tweet ^. tReplies)
         -- We definatly have currentSomething so this should never fail
         maxSomething     = maximum (currentSomething:tweetIds)
 
@@ -71,23 +74,23 @@ getMostRecentBy getter tweet =
 -- Since we're reversing the list, we might need diffList?
 sortTweetsBy :: (Ord a) => (Tweet -> a) -> [Tweet] -> [Tweet]
 sortTweetsBy _ []      = []
-sortTweetsBy getter ts = 
-    let tweetWithSortedChild = map (\t -> t {tReplies = sortTweetsBy getter (tReplies t)}) ts
+sortTweetsBy getter ts =
+    let tweetWithSortedChild = map (\t -> t & tReplies %~ sortTweetsBy getter) ts
         tweetsWithIds        = map (getMostRecentBy getter) tweetWithSortedChild
         sortedTweets         = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
     in map snd sortedTweets
 
 -- | Sort list of tweets with field "tCreatedAt"
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
-sortTweetsByCreatedAt = sortTweetsBy tCreatedAt
+sortTweetsByCreatedAt = sortTweetsBy (^. tCreatedAt)
 
 -- | Check if the tweet is sorted with given getter
 isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool
 isTweetSorted _       []      = True
-isTweetSorted getter [x]      = isTweetSorted getter (tReplies x)
+isTweetSorted getter [x]      = isTweetSorted getter (x ^. tReplies)
 isTweetSorted getter (a:b:ts) =
-       getter a >= getter b 
-    && isTweetSorted getter (concatMap tReplies [a,b]) 
+       getter a >= getter b
+    && isTweetSorted getter (concatMap (^. tReplies) [a,b])
     && isTweetSorted getter ts
 
 --------------------------------------------------------------------------------
@@ -116,24 +119,24 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
         Nothing -> throwM $ UserIdNotFound (dBTweetAuthorId dbt)
         Just user -> do
             let tweet = Tweet
-                    { tId        = tid
-                    , tText      = TweetText $ dBTweetText dbt
-                    , tAuthor    = UserName $ dBUserName user
-                    , tCreatedAt = dBTweetCreatedAt dbt
-                    , tReplyTo   = dBTweetReplyTo dbt
-                    , tMentions  = mentions
-                    , tReplies   = replies
+                    { _tId        = tid
+                    , _tText      = TweetText $ dBTweetText dbt
+                    , _tAuthor    = UserName $ dBUserName user
+                    , _tCreatedAt = dBTweetCreatedAt dbt
+                    , _tReplyTo   = dBTweetReplyTo dbt
+                    , _tMentions  = mentions
+                    , _tReplies   = replies
                     }
             return $ filterTweets userid tweet
 
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
     -- Get list of mentioned user's keys
-    dbMentionList <- fmap (mentionsUserId . entityVal) <$> selectList [MentionsTweetId ==. tid] []
+    dbMentionList <- map (mentionsUserId . entityVal) <$> selectList [MentionsTweetId ==. tid] []
     mentionedUsers <- getMany dbMentionList
     let mentionList = map
             (\(key, user) ->
-                Mention { mName = UserName $ dBUserName user, mId = key}
+                Mention { _mName = UserName $ dBUserName user, _mId = key}
             ) (M.toList mentionedUsers)
     return mentionList
 
@@ -161,14 +164,14 @@ dbUserToUser :: Entity DBUser -> SqlPersistM User
 dbUserToUser (Entity uid dbuser) = do
     userTweets <- selectList [DBTweetAuthorId ==. uid] defaultTweetSelectOpt
     pure User
-        { uId             = uid
-        , uName           = UserName (dBUserName dbuser)
-        , uNumberOfTweets = length userTweets
-        , uFollowers      = 0
-        , uFollow         = 0
-        , uLikes          = 0
-        , uRetweets       = 0
-        , uProfile        = "To be implemented"
+        { _uId             = uid
+        , _uName           = UserName (dBUserName dbuser)
+        , _uNumberOfTweets = length userTweets
+        , _uFollowers      = 0
+        , _uFollow         = 0
+        , _uLikes          = 0
+        , _uRetweets       = 0
+        , _uProfile        = "To be implemented"
         }
 
 --------------------------------------------------------------------------------
@@ -219,7 +222,7 @@ getUserByName pool userName =
 -- | Insert a tweet
 -- Perhaps replace userName with userId?
 -- Needs validation on TweetText
-insertTweet :: ConnectionPool 
+insertTweet :: ConnectionPool
             -> UserName
             -> TweetText
             -> Maybe DBTweetId
@@ -241,7 +244,8 @@ insertTweet pool postUser content mReplyTo mentions =
                 (throwM $ ParentTweetNotFound parentId)
                 (\tweet -> do
                     insert_ $ Reply parentId (entityKey edbt) currTime
-                    void $ insertUnique $ Mentions (entityKey edbt) (dBTweetAuthorId tweet) currTime
+                    void $ insertUnique 
+                         $ Mentions (entityKey edbt) (dBTweetAuthorId tweet) currTime
                 )
                 (get parentId)
 
@@ -250,7 +254,8 @@ insertTweet pool postUser content mReplyTo mentions =
         mentionedUserIds <- getMany filteredMentions
         let userKeys = fst <$> M.toList mentionedUserIds
 
-        mapM_ (\userId -> void $ insertUnique $ Mentions (entityKey edbt) userId currTime) userKeys
+        forM_ userKeys $ \userId -> 
+            void $ insertUnique $ Mentions (entityKey edbt) userId currTime
 
         dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
@@ -285,7 +290,7 @@ getUserLists :: ConnectionPool -> IO [(DBUserId, UserName)]
 getUserLists pool =
     flip runSqlPersistMPool pool $ do
         userLists <- selectList [] [Asc DBUserName]
-        let userIdNames = map 
+        let userIdNames = map
                 (\(Entity k u) -> (k, UserName $ dBUserName u))
                 userLists
         return userIdNames
