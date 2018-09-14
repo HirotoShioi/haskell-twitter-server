@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 11f4025fc73bc4afd2447b42cf64d72d6211068276125509cd2623f54bb3d25d
+-- hash: e70aa0e17bd649bfe6fc00338c55019196a95960af40004c73aaf390b5f72530
 
 name:           twitter-server
 version:        0.1.0.0
@@ -38,7 +38,7 @@ library
       Paths_twitter_server
   hs-source-dirs:
       src
-  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving EmptyDataDecls FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses QuasiQuotes TypeFamilies
+  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses TypeFamilies
   ghc-options: -Wall
   build-depends:
       QuickCheck
@@ -64,7 +64,7 @@ executable twitter-server-exe
       Paths_twitter_server
   hs-source-dirs:
       app
-  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving EmptyDataDecls FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses QuasiQuotes TypeFamilies
+  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses TypeFamilies
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
@@ -92,7 +92,7 @@ test-suite twitter-server-test
       Paths_twitter_server
   hs-source-dirs:
       test
-  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving EmptyDataDecls FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses QuasiQuotes TypeFamilies
+  default-extensions: NoImplicitPrelude ScopedTypeVariables OverloadedStrings LambdaCase EmptyCase TypeApplications GeneralizedNewtypeDeriving FlexibleContexts FlexibleInstances GADTs MultiParamTypeClasses TypeFamilies
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck

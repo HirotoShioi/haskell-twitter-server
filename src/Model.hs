@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDecls  #-}
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -167,7 +168,6 @@ instance Arbitrary UserName where
 instance Arbitrary Text where
     arbitrary = fromString <$> arbitrary
 
--- https://gist.github.com/agrafix/2b48ec069693e3ab851e
 instance Arbitrary UTCTime where
     arbitrary =
         do randomDay   <- choose (1, 29) :: Gen Int

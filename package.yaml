@@ -47,12 +47,10 @@ default-extensions:
 - EmptyCase
 - TypeApplications
 - GeneralizedNewtypeDeriving
-- EmptyDataDecls
 - FlexibleContexts
 - FlexibleInstances
 - GADTs
 - MultiParamTypeClasses 
-- QuasiQuotes
 - TypeFamilies
 
 library:
