@@ -117,12 +117,17 @@ instance ToJSON Tweet where
                 ]
         in object ["tweet" .= tweetObj]
 
--- | Add more fields!
 instance ToJSON User where
     toJSON User{..} =
         let userObj = object
-                [ "username"         .= getUserName uName
-                , "number_of_tweets" .= uNumberOfTweets
+                [ "user_id"             .= fromSqlKey uId
+                , "username"            .= getUserName uName
+                , "number_of_tweets"    .= uNumberOfTweets
+                , "number_of_followers" .= uFollowers
+                , "number_of_follows"   .= uFollow
+                , "number_of_likes"     .= uLikes
+                , "number_of_retweets"  .= uRetweets
+                , "profile"             .= uProfile
                 ]
         in object ["user" .= userObj]
 
