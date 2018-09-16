@@ -2,9 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Generator
-    ( tweetRandomly
-    , insertUsers
-    , insertRandomDataIntoEmptyDB
+    ( insertRandomDataIntoEmptyDB
     ) where
 
 import           RIO
@@ -66,7 +64,7 @@ replyRandomTweet pool = do
         (Just num) -> do
             -- Get random tweet
             randomId <- generate $ elements [1 .. (fromSqlKey num)]
-            randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
+            randomlyFetchedTweet <- getTweetById True pool (toSqlKey randomId)
 
             -- Generate random reply
             randomReply <- generate mkRandomTweet
@@ -128,7 +126,8 @@ ignoreException action = catches action
         say $ tshow e
         return ()
 
---- | Insert random data into data
+-- | Insert given number of random tweets as well userdata to the database
+--
 -- If true, it'll insert user data as well.
 insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do

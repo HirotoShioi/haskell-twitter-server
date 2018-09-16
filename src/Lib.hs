@@ -84,6 +84,10 @@ sortTweetsBy getter ts =
 sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
 sortTweetsByCreatedAt = sortTweetsBy (^. tCreatedAt)
 
+-- | Sort an given tweet
+sortTweetByCreatedAt :: Tweet -> Tweet
+sortTweetByCreatedAt t = t & tReplies %~ sortTweetsByCreatedAt 
+
 -- | Check if the tweet is sorted with given getter
 isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool
 isTweetSorted _       []      = True
@@ -111,7 +115,7 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
     eReplyList <- selectList [ReplyParent ==. tid] [Asc ReplyCreatedAt]
     let replyList = entityVal <$> eReplyList
     replies    <- if shouldGetReplies
-                  then getTweetsByIdDB userid (map replyChild replyList)
+                  then getTweetsByIdDB shouldGetReplies userid (map replyChild replyList)
                   else return []
     mentions   <- getMentionList tid
     mUser      <- get $ dBTweetAuthorId dbt
@@ -127,7 +131,7 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
                     , _tMentions  = mentions
                     , _tReplies   = replies
                     }
-            return $ filterTweets userid tweet
+            return $ sortTweetByCreatedAt $ filterTweets userid tweet
 
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
@@ -141,15 +145,19 @@ getMentionList tid = do
     return mentionList
 
 -- | Fetch DBTweet with it's id and convert into Tweet type
-getTweetByIdDB :: DBUserId -> DBTweetId -> SqlPersistM Tweet
-getTweetByIdDB userid tweetNum = do
+getTweetByIdDB :: Bool -> DBUserId -> DBTweetId -> SqlPersistM Tweet
+getTweetByIdDB shouldGetReplies userid tweetNum = do
     mTweet <- getEntity tweetNum
     case mTweet of
         Nothing    -> throwM $ TweetNotFound tweetNum
-        Just tweet -> dBTweetToTweetWithReplies userid tweet
+        Just tweet ->
+            if shouldGetReplies
+                then dBTweetToTweetWithReplies userid tweet
+                else dBTweetToTweetWithoutReplies userid tweet
 
-getTweetsByIdDB :: DBUserId -> [DBTweetId] -> SqlPersistM [Tweet]
-getTweetsByIdDB userid = mapM (getTweetByIdDB userid)
+-- | Fetch tweet with given Id
+getTweetsByIdDB :: Bool -> DBUserId -> [DBTweetId] -> SqlPersistM [Tweet]
+getTweetsByIdDB shouldGetReplies userid = mapM (getTweetByIdDB shouldGetReplies userid)
 
 -- | Query user by it's name
 getUserByNameDB :: UserName -> SqlPersistM (Entity DBUser)
@@ -195,11 +203,11 @@ getTweetsByUser pool username =
                 return $ sortTweetsByCreatedAt unsortedTweets
 
 -- | Get tweet by its Id
-getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
-getTweetById pool tweetId =
+getTweetById :: Bool -> ConnectionPool -> DBTweetId -> IO Tweet
+getTweetById shouldGetReplies pool tweetId =
     flip runSqlPersistMPool pool $ do
         (rootId, rootAuthor) <- findRootId tweetId
-        getTweetByIdDB rootAuthor rootId
+        getTweetByIdDB shouldGetReplies rootAuthor rootId
   where
     findRootId :: DBTweetId -> SqlPersistM (DBTweetId, DBUserId)
     findRootId dbTid = do
@@ -259,7 +267,7 @@ insertTweet pool postUser content mReplyTo mentions =
 
         dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
--- | Insert an user
+-- | Insert an user with given name
 insertUser :: ConnectionPool -> Config -> UserName -> IO User
 insertUser pool config name =
     case validate config name of

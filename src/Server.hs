@@ -56,7 +56,7 @@ createUserH pool cfg userName = handleWithException $ insertUser pool cfg userNa
 getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler Tweet
 getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
-    handleWithException $ getTweetById pool tweetId
+    handleWithException $ getTweetById True pool tweetId
 
 -- | Exception handling
 handleWithException :: (ToJSON a) => IO a -> S.Handler a
@@ -87,7 +87,7 @@ mkApp config = do
     runSqlPool (runMigration migrateAll) pool
     return $ app pool config
 
--- | Run application with given file as database
+-- | Run twitter server
 runTwitterServer :: IO ()
 runTwitterServer = do
     let config = defaultConfig
