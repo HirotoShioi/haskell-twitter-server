@@ -128,7 +128,8 @@ ignoreException action = catches action
         say $ tshow e
         return ()
 
---- | Insert random data into data
+-- | Insert given number of random tweets as well userdata to the database
+--
 -- If true, it'll insert user data as well.
 insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do

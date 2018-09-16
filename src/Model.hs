@@ -32,20 +32,24 @@ import           Configuration           (Config (..))
 --------------------------------------------------------------------------------
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+-- | Database representation of an user
 DBUser
     name Text
     UniqueUserName name
     deriving Show
+-- | Database representation of an tweet
 DBTweet
     text Text
     authorId DBUserId
     createdAt UTCTime default=CURRENT_TIME
     replyTo DBTweetId Maybe
     deriving Show
+-- | Relational table for replies
 Reply
     parent DBTweetId
     child  DBTweetId
     createdAt UTCTime default=CURRENT_TIME
+-- | Mention table
 Mentions
     tweetId DBTweetId
     userId  DBUserId
@@ -70,7 +74,9 @@ newtype TweetText = TweetText
 -- | Mentions
 data Mention = Mention {
       _mName :: !UserName
+    -- ^ Name of the user mentioned
     , _mId   :: !DBUserId
+    -- ^ Id of an user mentioned
     } deriving Show
 
 makeLenses ''Mention
@@ -233,6 +239,7 @@ instance Arbitrary User where
            ]
         pure User{..}
 
+-- | List of users used for testing
 testUserList :: [UserName]
 testUserList = map UserName
     ["Hiroto", "HumbleMumble", "Ana"
@@ -249,6 +256,7 @@ instance FromHttpApiData UserName where
 -- Validation
 --------------------------------------------------------------------------------
 
+-- | Typeclass for validation
 class Validate a where
     validate :: Config -> a -> Either ValidationException a
 
@@ -299,10 +307,15 @@ validateContent cfg ccc = do
 
 data ValidationException =
       UserNameTooShort Int
+    -- ^ Exception for username being too short
     | UserNameTooLong Int
+    -- ^ Exception for username being too long
     | InvalidCharacters Text
+    -- ^ Invalid character was user for an username
     | TweetTooLong Int
+    -- ^ Tweet text was too long
     | EmptyTweet
+    -- ^ Empty tweet was given
 
 instance Exception ValidationException
 

@@ -259,7 +259,7 @@ insertTweet pool postUser content mReplyTo mentions =
 
         dBTweetToTweetWithReplies (entityKey ePostUser) edbt
 
--- | Insert an user
+-- | Insert an user with given name
 insertUser :: ConnectionPool -> Config -> UserName -> IO User
 insertUser pool config name =
     case validate config name of

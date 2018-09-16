@@ -18,7 +18,7 @@ data TwitterException =
   | ParentTweetNotFound DBTweetId
   -- ^ Looked up parent tweet but it was not found
   | UserIdNotFound DBUserId
-  --- ^ Looked up user by its Id but it was not found
+  -- ^ Looked up user by its Id but it was not found
   | UserNotFound UserName
   -- ^ User with given name was not found
   | UserNameAlreadyExists UserName
