@@ -11,13 +11,15 @@ import           RIO
 import           Servant
 
 import           Model   (Tweet, User, UserName)
+import           Lib     (Sorted)
+
 
 -- | Twitter endpoint
 type Api =
-         "api" :> "user"   :> "tweets"  :> Capture "user" UserName :> Get '[JSON] [Tweet]
+         "api" :> "user"   :> "tweets"  :> Capture "user" UserName :> Get '[JSON] (Sorted [Tweet])
     :<|> "api" :> "user"   :> "profile" :> Capture "user" UserName :> Get '[JSON] User
     :<|> "api" :> "user"   :> Capture "user" UserName :> Post '[JSON] User
-    :<|> "api" :> "tweet"  :> Capture "id" Int64 :> Get '[JSON] Tweet
+    :<|> "api" :> "tweet"  :> Capture "id" Int64 :> Get '[JSON] (Sorted Tweet)
 
 api :: Proxy Api
 api = Proxy

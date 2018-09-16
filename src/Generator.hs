@@ -15,12 +15,14 @@ import           Data.String.Conversions (cs)
 import           Database.Persist.Sqlite
 
 import           Exceptions              (TwitterException (..))
-import           Lib                     (getLatestTweetId, getTweetById,
-                                          getUserLists, insertTweet, insertUser)
+import           Lib                     (getLatestTweetId, getSorted,
+                                          getTweetById, getUserLists,
+                                          insertTweet, insertUser)
 import           Model                   (Tweet (..), TweetText (..),
                                           UserName (..), ValidationException,
-                                          migrateAll, tAuthor, tReplies,
-                                          tReplyTo, tText, testUserList, tMentions)
+                                          migrateAll, tAuthor, tMentions,
+                                          tReplies, tReplyTo, tText,
+                                          testUserList)
 import qualified RIO.Text                as T
 import           Say                     (say)
 import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
@@ -64,7 +66,7 @@ replyRandomTweet pool = do
         (Just num) -> do
             -- Get random tweet
             randomId <- generate $ elements [1 .. (fromSqlKey num)]
-            randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
+            randomlyFetchedTweet <- getSorted <$> getTweetById pool (toSqlKey randomId)
 
             -- Generate random reply
             randomReply <- generate mkRandomTweet
@@ -114,7 +116,7 @@ insertUsers config users = do
 
 -- | Exception handling for generator
 ignoreException :: IO () -> IO ()
-ignoreException action = catches action 
+ignoreException action = catches action
     [Handler handleTwitterException, Handler handleValidationException]
   where
     handleTwitterException :: TwitterException -> IO ()

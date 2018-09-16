@@ -9,6 +9,8 @@ module Lib
     , insertTweet
     , insertUser
     , isTweetSorted
+    , Sorted
+    , getSorted
     ) where
 
 import           RIO
@@ -16,6 +18,7 @@ import           RIO
 import           Control.Lens             ((%~))
 import           Control.Monad.Trans.Cont (ContT (..), evalContT)
 
+import           Data.Aeson
 import           Data.List                (maximum, nub, sortBy)
 import           Database.Persist
 import           Database.Persist.Sqlite
@@ -31,8 +34,8 @@ import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
                                            Reply (..), Tweet (..),
                                            TweetText (..), Unique (..),
                                            User (..), UserName (..),
-                                           Validate (..), mId, tMentions,
-                                           tReplies, tCreatedAt)
+                                           Validate (..), mId, tCreatedAt,
+                                           tMentions, tReplies)
 import           Util                     (maybeM, whenJust)
 
 import           Configuration            (Config (..))
@@ -40,6 +43,11 @@ import           Configuration            (Config (..))
 --------------------------------------------------------------------------------
 -- Polishing logics (sort, filter)
 --------------------------------------------------------------------------------
+
+newtype Sorted a = Sorted {getSorted :: a}
+
+instance (ToJSON a) => ToJSON (Sorted a) where
+    toJSON (Sorted a) = toJSON a
 
 -- | Default SelectOpt
 defaultTweetSelectOpt :: [SelectOpt DBTweet]
@@ -81,12 +89,12 @@ sortTweetsBy getter ts =
     in map snd sortedTweets
 
 -- | Sort list of tweets with field "tCreatedAt"
-sortTweetsByCreatedAt :: [Tweet] -> [Tweet]
-sortTweetsByCreatedAt = sortTweetsBy (^. tCreatedAt)
+sortTweetsByCreatedAt :: [Tweet] -> Sorted [Tweet]
+sortTweetsByCreatedAt = Sorted . sortTweetsBy (^. tCreatedAt)
 
 -- | Sort an given tweet
-sortTweetByCreatedAt :: Tweet -> Tweet
-sortTweetByCreatedAt t = t & tReplies %~ sortTweetsByCreatedAt 
+sortTweetByCreatedAt :: Tweet -> Sorted Tweet
+sortTweetByCreatedAt t = Sorted (t & tReplies %~ sortTweetsBy (^. tCreatedAt))
 
 -- | Check if the tweet is sorted with given getter
 isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool
@@ -123,12 +131,10 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
                     , _tMentions  = mentions
                     , _tReplies   = replies
                     }
-            return $ sortTweetByCreatedAt $ filterTweets userid tweet
+            return $ filterTweets userid tweet
 
 dbTweetsToTweets :: Bool -> DBUserId -> [Entity DBTweet] -> SqlPersistM [Tweet]
-dbTweetsToTweets shouldGetReplies userid edbts = do
-    unsortedReplies <- mapM (dbTweetToTweet shouldGetReplies userid) edbts
-    return $ sortTweetsByCreatedAt unsortedReplies
+dbTweetsToTweets shouldGetReplies userid = mapM (dbTweetToTweet shouldGetReplies userid)
 
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
@@ -181,9 +187,9 @@ dbUserToUser (Entity uid dbuser) = do
 --------------------------------------------------------------------------------
 
 -- | Get tweets with username
-getTweetsByUser :: ConnectionPool -> UserName -> IO [Tweet]
-getTweetsByUser pool username =
-    flip runSqlPersistMPool pool $ do
+getTweetsByUser :: ConnectionPool -> UserName -> IO (Sorted [Tweet])
+getTweetsByUser pool username = do
+    tweets <- flip runSqlPersistMPool pool $ do
         eUserId <- try $ entityKey <$> getUserByNameDB username
         case eUserId of
             Left (_ :: TwitterException) -> return []
@@ -194,13 +200,14 @@ getTweetsByUser pool username =
                     ]
                     defaultTweetSelectOpt
                 dbTweetsToTweets True userId dbts
+    return $ sortTweetsByCreatedAt tweets
 
 -- | Get tweet by its Id
-getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
+getTweetById :: ConnectionPool -> DBTweetId -> IO (Sorted Tweet)
 getTweetById pool tweetId =
     flip runSqlPersistMPool pool $ do
         (rootId, rootAuthor) <- findRootId tweetId
-        getTweetByIdDB True rootAuthor rootId
+        sortTweetByCreatedAt <$> getTweetByIdDB True rootAuthor rootId
   where
     findRootId :: DBTweetId -> SqlPersistM (DBTweetId, DBUserId)
     findRootId dbTid = do
@@ -228,7 +235,7 @@ insertTweet :: ConnectionPool
             -> TweetText
             -> Maybe DBTweetId
             -> [DBUserId]
-            -> IO Tweet
+            -> IO (Sorted Tweet)
 insertTweet pool postUser content mReplyTo mentions =
     flip runSqlPersistMPool pool $ do
         currTime  <- getCurrentTime
@@ -245,7 +252,7 @@ insertTweet pool postUser content mReplyTo mentions =
                 (throwM $ ParentTweetNotFound parentId)
                 (\tweet -> do
                     insert_ $ Reply parentId (entityKey edbt) currTime
-                    void $ insertUnique 
+                    void $ insertUnique
                          $ Mentions (entityKey edbt) (dBTweetAuthorId tweet) currTime
                 )
                 (get parentId)
@@ -255,10 +262,10 @@ insertTweet pool postUser content mReplyTo mentions =
         mentionedUserIds <- getMany filteredMentions
         let userKeys = fst <$> M.toList mentionedUserIds
 
-        forM_ userKeys $ \userId -> 
+        forM_ userKeys $ \userId ->
             void $ insertUnique $ Mentions (entityKey edbt) userId currTime
 
-        dbTweetToTweet True (entityKey ePostUser) edbt
+        sortTweetByCreatedAt <$> dbTweetToTweet True (entityKey ePostUser) edbt
 
 -- | Insert an user with given name
 insertUser :: ConnectionPool -> Config -> UserName -> IO User

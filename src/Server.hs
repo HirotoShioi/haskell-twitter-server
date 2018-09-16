@@ -22,8 +22,9 @@ import           Servant                  as S
 import           Api                      (Api, api)
 import           Configuration            (Config (..), defaultConfig)
 import           Exceptions               (TwitterException (..))
-import           Lib                      (getTweetById, getTweetsByUser,
-                                           getUserByName, insertUser)
+import           Lib                      (Sorted, getTweetById,
+                                           getTweetsByUser, getUserByName,
+                                           insertUser)
 import           Model                    (Tweet (..), User (..), UserName,
                                            ValidationException (..), migrateAll)
 
@@ -40,7 +41,7 @@ server pool config =
 --------------------------------------------------------------------------------
 
 -- | Get all the tweets from user
-getTweetsByUserH :: ConnectionPool -> UserName -> S.Handler [Tweet]
+getTweetsByUserH :: ConnectionPool -> UserName -> S.Handler (Sorted [Tweet])
 getTweetsByUserH pool userName = liftIO $ getTweetsByUser pool userName
 
 -- | Get user profile
@@ -53,7 +54,7 @@ createUserH pool cfg userName = handleWithException $ insertUser pool cfg userNa
 
 
 -- | Get Tweet by its Id
-getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler Tweet
+getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler (Sorted Tweet)
 getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
     handleWithException $ getTweetById pool tweetId
