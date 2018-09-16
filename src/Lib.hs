@@ -203,11 +203,11 @@ getTweetsByUser pool username =
                 return $ sortTweetsByCreatedAt unsortedTweets
 
 -- | Get tweet by its Id
-getTweetById :: Bool -> ConnectionPool -> DBTweetId -> IO Tweet
-getTweetById shouldGetReplies pool tweetId =
+getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
+getTweetById pool tweetId =
     flip runSqlPersistMPool pool $ do
         (rootId, rootAuthor) <- findRootId tweetId
-        getTweetByIdDB shouldGetReplies rootAuthor rootId
+        getTweetByIdDB True rootAuthor rootId
   where
     findRootId :: DBTweetId -> SqlPersistM (DBTweetId, DBUserId)
     findRootId dbTid = do

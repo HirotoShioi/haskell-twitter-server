@@ -64,7 +64,7 @@ replyRandomTweet pool = do
         (Just num) -> do
             -- Get random tweet
             randomId <- generate $ elements [1 .. (fromSqlKey num)]
-            randomlyFetchedTweet <- getTweetById True pool (toSqlKey randomId)
+            randomlyFetchedTweet <- getTweetById pool (toSqlKey randomId)
 
             -- Generate random reply
             randomReply <- generate mkRandomTweet
