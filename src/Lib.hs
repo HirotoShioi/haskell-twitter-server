@@ -101,14 +101,6 @@ isTweetSorted getter (a:b:ts) =
 -- SQL Logic
 --------------------------------------------------------------------------------
 
--- | Convert DBTweet record into Tweet type with replies
-dBTweetToTweetWithReplies :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
-dBTweetToTweetWithReplies = dbTweetToTweet True
-
--- | Convert DBTWeet record into Tweet type without replies
-dBTweetToTweetWithoutReplies :: DBUserId -> Entity DBTweet -> SqlPersistM Tweet
-dBTweetToTweetWithoutReplies = dbTweetToTweet False
-
 -- | Convert DBTweet record into Tweet type
 dbTweetToTweet :: Bool -> DBUserId -> Entity DBTweet -> SqlPersistM Tweet
 dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
@@ -133,6 +125,11 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
                     }
             return $ sortTweetByCreatedAt $ filterTweets userid tweet
 
+dbTweetsToTweets :: Bool -> DBUserId -> [Entity DBTweet] -> SqlPersistM [Tweet]
+dbTweetsToTweets shouldGetReplies userid edbts = do
+    unsortedReplies <- mapM (dbTweetToTweet shouldGetReplies userid) edbts
+    return $ sortTweetsByCreatedAt unsortedReplies
+
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
     -- Get list of mentioned user's keys
@@ -150,10 +147,7 @@ getTweetByIdDB shouldGetReplies userid tweetNum = do
     mTweet <- getEntity tweetNum
     case mTweet of
         Nothing    -> throwM $ TweetNotFound tweetNum
-        Just tweet ->
-            if shouldGetReplies
-                then dBTweetToTweetWithReplies userid tweet
-                else dBTweetToTweetWithoutReplies userid tweet
+        Just tweet -> dbTweetToTweet shouldGetReplies userid tweet
 
 -- | Fetch tweet with given Id
 getTweetsByIdDB :: Bool -> DBUserId -> [DBTweetId] -> SqlPersistM [Tweet]
@@ -199,8 +193,7 @@ getTweetsByUser pool username =
                     , DBTweetReplyTo  ==. Nothing
                     ]
                     defaultTweetSelectOpt
-                unsortedTweets <- mapM (dBTweetToTweetWithReplies userId) dbts
-                return $ sortTweetsByCreatedAt unsortedTweets
+                dbTweetsToTweets True userId dbts
 
 -- | Get tweet by its Id
 getTweetById :: ConnectionPool -> DBTweetId -> IO Tweet
@@ -265,7 +258,7 @@ insertTweet pool postUser content mReplyTo mentions =
         forM_ userKeys $ \userId -> 
             void $ insertUnique $ Mentions (entityKey edbt) userId currTime
 
-        dBTweetToTweetWithReplies (entityKey ePostUser) edbt
+        dbTweetToTweet True (entityKey ePostUser) edbt
 
 -- | Insert an user with given name
 insertUser :: ConnectionPool -> Config -> UserName -> IO User
