@@ -29,11 +29,11 @@ import           Model                    (Tweet (..), User (..), UserName,
                                            ValidationException (..), migrateAll)
 
 -- | Server endpoints
-server :: ConnectionPool -> Config -> Server Api
-server pool config =
+server :: ConnectionPool -> ServerT Api AppM
+server pool =
          getTweetsByUserH pool
     :<|> getUserProfileH pool
-    :<|> createUserH pool config
+    :<|> createUserH pool
     :<|> getTweetByIdH pool
 
 --------------------------------------------------------------------------------
@@ -41,32 +41,34 @@ server pool config =
 --------------------------------------------------------------------------------
 
 -- | Get all the tweets from user
-getTweetsByUserH :: ConnectionPool -> UserName -> S.Handler (Sorted [Tweet])
+getTweetsByUserH :: ConnectionPool -> UserName -> AppM (Sorted [Tweet])
 getTweetsByUserH pool userName = liftIO $ getTweetsByUser pool userName
 
 -- | Get user profile
-getUserProfileH :: ConnectionPool -> UserName -> S.Handler User
+getUserProfileH :: ConnectionPool -> UserName -> AppM User
 getUserProfileH pool userName = liftIO $ getUserByName pool userName
 
 -- | Create user with given UserName
-createUserH :: ConnectionPool -> Config -> UserName -> S.Handler User
-createUserH pool cfg userName = handleWithException $ insertUser pool cfg userName
+createUserH :: ConnectionPool -> UserName -> AppM User
+createUserH pool userName = do
+    cfg <- ask
+    handleWithException $ insertUser pool cfg userName
 
 
 -- | Get Tweet by its Id
-getTweetByIdH :: ConnectionPool -> Int64 -> S.Handler (Sorted Tweet)
+getTweetByIdH :: ConnectionPool -> Int64 -> AppM (Sorted Tweet)
 getTweetByIdH pool tweetNum = do
     let tweetId = toSqlKey tweetNum
     handleWithException $ getTweetById pool tweetId
 
 -- | Exception handling
-handleWithException :: (ToJSON a) => IO a -> S.Handler a
+handleWithException :: (ToJSON a) => IO a -> AppM a
 handleWithException action = C.catches (liftIO action)
      [C.Handler validationHandler, C.Handler twitterHandler]
   where
-    validationHandler :: ValidationException -> S.Handler a
+    validationHandler :: ValidationException -> AppM a
     validationHandler e = throwError err400 {errBody = showError e}
-    twitterHandler :: TwitterException -> S.Handler a
+    twitterHandler :: TwitterException -> AppM a
     twitterHandler e = throwError err400 {errBody = showError e}
     showError :: (IsString a, Exception e) => e -> a
     showError =  fromString . show
@@ -76,9 +78,14 @@ handleWithException action = C.catches (liftIO action)
 -- Server logic
 --------------------------------------------------------------------------------
 
+type AppM = ReaderT Config S.Handler
+
+nt :: Config -> AppM a -> S.Handler a
+nt c x = runReaderT x c
+
 -- (TODO): Use proper SQL?
 app :: ConnectionPool -> Config -> Application
-app pool config = serve api $ server pool config
+app pool config = serve api $ hoistServer api (nt config) (server pool)
 
 -- | Run application with given file as database
 mkApp :: Config -> IO Application
