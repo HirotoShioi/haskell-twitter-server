@@ -6,6 +6,8 @@ module Server
 
 import           RIO
 
+import qualified RIO.ByteString.Lazy as LBS
+import qualified RIO.Text as T
 import           Control.Exception.Safe   as C (Handler (..), catches)
 import           Control.Monad.Logger     (runStderrLoggingT)
 
@@ -70,8 +72,8 @@ handleWithException action = C.catches (liftIO action)
     validationHandler e = throwError err400 {errBody = showError e}
     twitterHandler :: TwitterException -> AppM a
     twitterHandler e = throwError err400 {errBody = showError e}
-    showError :: (IsString a, Exception e) => e -> a
-    showError =  fromString . show
+    showError :: (Exception e) => e -> LBS.ByteString
+    showError =  LBS.fromStrict . encodeUtf8 . T.pack . show
 
 
 --------------------------------------------------------------------------------
