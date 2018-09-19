@@ -13,13 +13,14 @@ Twitter server written in Haskell. This is for studying purposes.
 - [x] Follow tweet structure by mentions
 - [x] Sort tweet appropriately
 - [x] Use [lens](http://hackage.haskell.org/package/lens)
-- [ ] Apply ReaderT Config on Servant handlers (Read [here](https://haskell-servant.readthedocs.io/en/stable/cookbook/using-custom-monad/UsingCustomMonad.html))
+- [x] Apply ReaderT Config on Servant handlers (Read [here](https://haskell-servant.readthedocs.io/en/stable/cookbook/using-custom-monad/UsingCustomMonad.html))
+- [ ] Observe [this article](http://www.parsonsmatt.org/2016/07/08/servant-persistent_updated.html)
 - [ ] Lookup Twitter API (Read [here](https://developer.twitter.com/))
 - [ ] Follow/Unfollow an User
 - [ ] Fetch mentioned tweets
 - [ ] Timeline API
 - [ ] Migrate to postgreSQL (Read [here](https://www.yesodweb.com/book/persistent#persistent_something_besides_sqlite))
-- [ ] User docker for postgresSQL
+- [ ] Use docker for postgresSQL
 - [ ] Authentication (Read [here](https://haskell-servant.readthedocs.io/en/stable/tutorial/Authentication.html))
 - [ ] Favorites
 - [ ] Retweets
