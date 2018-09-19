@@ -298,7 +298,7 @@ getUserLists :: ConnectionPool -> IO [(DBUserId, UserName)]
 getUserLists pool =
     flip runSqlPersistMPool pool $ do
         userLists <- selectList [] [Asc DBUserName]
-        let userIdNames = map
+        let userIdWithNames = map
                 (\(Entity k u) -> (k, UserName $ dBUserName u))
                 userLists
-        return userIdNames
+        return userIdWithNames

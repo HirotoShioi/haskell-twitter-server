@@ -30,16 +30,14 @@ import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
 --------------------------------------------------------------------------------
--- FIX GENERATOR
 
 -- | Tweet type
 data TweetType =  Normal | Response
 
 -- | Insert random tweets into the database
-tweetRandomly :: ConnectionString -> Int -> IO ()
-tweetRandomly conn num = do
+tweetRandomly :: ConnectionPool-> Int -> IO ()
+tweetRandomly pool num = do
      randomList <- generate $ vectorOf num (elements [Normal, Response])
-     pool <- runStderrLoggingT $ createPostgresqlPool conn 5
 
      forM_ randomList $ \case
         Normal   -> insertRandomTweet pool
@@ -104,10 +102,8 @@ mkRandomTweet = do
         & tMentions .~ []
 
 -- | Insert Users into given databse
-insertUsers :: Config -> [UserName] -> IO ()
-insertUsers config users = do
-
-    pool <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
+insertUsers :: ConnectionPool -> Config -> [UserName] -> IO ()
+insertUsers pool config users = do
     runSqlPool (runMigration migrateAll) pool
 
     forM_ users $ \user ->
@@ -133,6 +129,9 @@ ignoreException action = catches action
 insertRandomDataIntoEmptyDB :: Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB shouldInsertUsers numOfTweets = do
     config <- setupConfig
+    pool   <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
+
     when shouldInsertUsers $
-       insertUsers config testUserList
-    tweetRandomly (cfgConnectionString config) numOfTweets
+       insertUsers pool config testUserList
+
+    tweetRandomly pool numOfTweets
