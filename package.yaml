@@ -35,6 +35,7 @@ dependencies:
 - string-conversions
 - transformers
 - warp
+- yaml
 
 ghc-options:
 - -Wall

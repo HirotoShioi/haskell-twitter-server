@@ -1,12 +1,20 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Configuration
     ( Config(..)
     , defaultConfig
     , PortNumber
+    , setupConfig
     ) where
 
 import           RIO
 
+import           Data.Aeson                  (FromJSON (..), withObject, (.:))
+import           Data.Yaml                   (decodeFileEither)
 import           Database.Persist.Postgresql
+import           Say
+
+import           Util                        (eitherM)
 
 -- | Configuration
 data Config = Config {
@@ -30,30 +38,52 @@ type PortNumber = Int
 defaultConfig :: Config
 defaultConfig = Config {
       cfgPortNumber        = 3000
-    , cfgConnectionString  = connStr
+    , cfgConnectionString  = "This is connection string"
     , cfgTweetLength       = 140
     , cfgUserNameMinLength = 3
     , cfgUserNameMaxLength = 20
     , cfgServerName        = "Haskell Twitter server"
     }
 
--- | Replace with yaml file!!
-connStr :: ConnectionString    
-connStr = "host=localhost dbname=perservant user=test password=test port=5432"
+data DBConfig = DBConfig {
+      cfgHost     :: !String
+    , cfgDBName   :: !String
+    , cfgUser     :: !String
+    , cfgPassword :: !String
+    , cfgDBPort   :: !PortNumber
+    }
 
--- version: '3.1'
+mkConnStr :: DBConfig -> ConnectionString
+mkConnStr DBConfig{..} = fromString $
+    concat ["host="
+           , cfgHost
+           , " dbname="
+           , cfgDBName
+           , " user="
+           , cfgUser
+           , " password="
+           , cfgPassword
+           , " port="
+           , show cfgDBPort
+           ]
 
--- services:
---   postgres:
---     image: postgres
---     ports:
---       - '127.0.0.1:5432:5432'
---     environment:
---       - POSTGRES_PASSWORD=test
---       - POSTGRES_USER=test
---       - POSTGRES_DB=perservant
---     volumes:
---       - perservant-db:/var/lib/postgresql/data:rw
+instance FromJSON DBConfig where
+     parseJSON = withObject "database configuration" $ \o -> do
+         host     <- o .: "host"
+         dbname   <- o .: "dbname"
+         user     <- o .: "user"
+         password <- o .: "password"
+         port     <- o .: "port"
 
--- volumes:
---   perservant-db:
+         pure $ DBConfig host dbname user password port
+
+setupConfig :: IO Config
+setupConfig = do
+    let config = defaultConfig
+    say "Reading config file"
+
+    dbConfig <- eitherM throwM return (decodeFileEither "database.yaml")
+
+    let connstr = mkConnStr dbConfig
+    let configWithConnStr = config {cfgConnectionString = connstr}
+    return configWithConnStr

@@ -7,7 +7,7 @@ module Generator
 
 import           RIO
 
-import           Configuration           (Config (..))
+import           Configuration           (Config (..), setupConfig)
 import           Control.Lens            ((&), (.~))
 import           Control.Monad.Logger    (runStderrLoggingT)
 
@@ -34,7 +34,6 @@ import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
 
 -- | Tweet type
 data TweetType =  Normal | Response
-    deriving (Show)
 
 -- | Insert random tweets into the database
 tweetRandomly :: ConnectionString -> Int -> IO ()
@@ -107,6 +106,7 @@ mkRandomTweet = do
 -- | Insert Users into given databse
 insertUsers :: Config -> [UserName] -> IO ()
 insertUsers config users = do
+
     pool <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
     runSqlPool (runMigration migrateAll) pool
 
@@ -130,8 +130,9 @@ ignoreException action = catches action
 -- | Insert given number of random tweets as well userdata to the database
 --
 -- If true, it'll insert user data as well.
-insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
-insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do
+insertRandomDataIntoEmptyDB :: Bool -> Int -> IO ()
+insertRandomDataIntoEmptyDB shouldInsertUsers numOfTweets = do
+    config <- setupConfig
     when shouldInsertUsers $
-       insertUsers cfg testUserList
-    tweetRandomly (cfgConnectionString cfg) numOfTweets
+       insertUsers config testUserList
+    tweetRandomly (cfgConnectionString config) numOfTweets

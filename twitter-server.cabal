@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 42e6c061c451c355552b4ac0a5a26fc34b9d27b73a105ea7555327b68947ec71
+-- hash: ce52e38bde2580004ead9c7d1c0c4100c010e22fbd8bf359d3ea253434d0c009
 
 name:           twitter-server
 version:        0.1.0.0
@@ -56,6 +56,7 @@ library
     , string-conversions
     , transformers
     , warp
+    , yaml
   default-language: Haskell2010
 
 executable twitter-server-exe
@@ -83,6 +84,7 @@ executable twitter-server-exe
     , transformers
     , twitter-server
     , warp
+    , yaml
   default-language: Haskell2010
 
 test-suite twitter-server-test
@@ -111,4 +113,5 @@ test-suite twitter-server-test
     , transformers
     , twitter-server
     , warp
+    , yaml
   default-language: Haskell2010
