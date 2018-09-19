@@ -332,4 +332,3 @@ instance Show ValidationException where
             "Given content is too long, must be shorter than " <> show num <> " characters"
         EmptyTweet             ->
             "Empty content has been given, must include something."
-

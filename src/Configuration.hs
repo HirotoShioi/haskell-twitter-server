@@ -91,3 +91,4 @@ setupConfig = do
     let connstr = mkConnStr dbConfig
     let configWithConnStr = config {cfgConnectionString = connstr}
     return configWithConnStr
+
