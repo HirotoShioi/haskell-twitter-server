@@ -41,7 +41,7 @@ DBUser
 DBTweet
     text Text
     authorId DBUserId
-    createdAt UTCTime
+    createdAt UTCTime -- Cannot set default value on postgres.. Need to investigate
     replyTo DBTweetId Maybe
     deriving Show
 -- | Relational table for replies

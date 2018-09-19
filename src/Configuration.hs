@@ -45,6 +45,8 @@ defaultConfig = Config {
     , cfgServerName        = "Haskell Twitter server"
     }
 
+-- | Database configuration
+-- Need Test, Prod database..
 data DBConfig = DBConfig {
       cfgHost     :: !String
     , cfgDBName   :: !String
@@ -53,6 +55,7 @@ data DBConfig = DBConfig {
     , cfgDBPort   :: !PortNumber
     }
 
+-- | Make connection string based upon DBConfig
 mkConnStr :: DBConfig -> ConnectionString
 mkConnStr DBConfig{..} = fromString $
     concat ["host="
@@ -77,6 +80,7 @@ instance FromJSON DBConfig where
 
          pure $ DBConfig host dbname user password port
 
+-- | Setup configuration
 setupConfig :: IO Config
 setupConfig = do
     let config = defaultConfig
