@@ -27,7 +27,7 @@ dependencies:
 - rio
 - QuickCheck
 - persistent
-- persistent-sqlite
+- persistent-postgresql
 - persistent-template
 - safe-exceptions
 - say

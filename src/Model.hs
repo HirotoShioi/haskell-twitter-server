@@ -15,7 +15,7 @@ import           Control.Lens            (makeLenses, (^.))
 import           Data.Aeson              (ToJSON (..), object, (.=))
 import           Data.Char               (isAscii)
 
-import           Database.Persist.Sqlite (Key, fromSqlKey, toSqlKey)
+import           Database.Persist.Postgresql (Key, fromSqlKey, toSqlKey)
 import           Database.Persist.TH
 
 import qualified RIO.Text                as T
@@ -41,20 +41,20 @@ DBUser
 DBTweet
     text Text
     authorId DBUserId
-    createdAt UTCTime default=CURRENT_TIME
+    createdAt UTCTime
     replyTo DBTweetId Maybe
     deriving Show
 -- | Relational table for replies
 Reply
     parent DBTweetId
     child  DBTweetId
-    createdAt UTCTime default=CURRENT_TIME
+    createdAt UTCTime
 -- | Mention table
 Mentions
     tweetId DBTweetId
     userId  DBUserId
     UniqueMention tweetId userId
-    mentionedAt UTCTime default=CURRENT_TIME
+    mentionedAt UTCTime
 |]
 
 --------------------------------------------------------------------------------

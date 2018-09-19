@@ -21,7 +21,7 @@ import           Control.Monad.Trans.Cont (ContT (..), evalContT)
 import           Data.Aeson
 import           Data.List                (maximum, nub, sortBy)
 import           Database.Persist
-import           Database.Persist.Sqlite
+import           Database.Persist.Postgresql
 
 import qualified RIO.Map                  as M
 

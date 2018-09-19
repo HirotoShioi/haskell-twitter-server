@@ -11,8 +11,7 @@ import           Configuration           (Config (..))
 import           Control.Lens            ((&), (.~))
 import           Control.Monad.Logger    (runStderrLoggingT)
 
-import           Data.String.Conversions (cs)
-import           Database.Persist.Sqlite
+import           Database.Persist.Postgresql
 
 import           Exceptions              (TwitterException (..))
 import           Lib                     (getLatestTweetId, getSorted,
@@ -38,10 +37,10 @@ data TweetType =  Normal | Response
     deriving (Show)
 
 -- | Insert random tweets into the database
-tweetRandomly :: FilePath -> Int -> IO ()
-tweetRandomly sqliteFile num = do
+tweetRandomly :: ConnectionString -> Int -> IO ()
+tweetRandomly conn num = do
      randomList <- generate $ vectorOf num (elements [Normal, Response])
-     pool <- runStderrLoggingT $ createSqlitePool (cs sqliteFile) 5
+     pool <- runStderrLoggingT $ createPostgresqlPool conn 5
 
      forM_ randomList $ \case
         Normal   -> insertRandomTweet pool
@@ -108,7 +107,7 @@ mkRandomTweet = do
 -- | Insert Users into given databse
 insertUsers :: Config -> [UserName] -> IO ()
 insertUsers config users = do
-    pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
+    pool <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
     runSqlPool (runMigration migrateAll) pool
 
     forM_ users $ \user ->
@@ -135,4 +134,4 @@ insertRandomDataIntoEmptyDB :: Config -> Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB cfg shouldInsertUsers numOfTweets = do
     when shouldInsertUsers $
        insertUsers cfg testUserList
-    tweetRandomly (cfgDevelopmentDBPath cfg) numOfTweets
+    tweetRandomly (cfgConnectionString cfg) numOfTweets

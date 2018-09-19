@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e70aa0e17bd649bfe6fc00338c55019196a95960af40004c73aaf390b5f72530
+-- hash: 42e6c061c451c355552b4ac0a5a26fc34b9d27b73a105ea7555327b68947ec71
 
 name:           twitter-server
 version:        0.1.0.0
@@ -47,7 +47,7 @@ library
     , lens
     , monad-logger
     , persistent
-    , persistent-sqlite
+    , persistent-postgresql
     , persistent-template
     , rio
     , safe-exceptions
@@ -73,7 +73,7 @@ executable twitter-server-exe
     , lens
     , monad-logger
     , persistent
-    , persistent-sqlite
+    , persistent-postgresql
     , persistent-template
     , rio
     , safe-exceptions
@@ -101,7 +101,7 @@ test-suite twitter-server-test
     , lens
     , monad-logger
     , persistent
-    , persistent-sqlite
+    , persistent-postgresql
     , persistent-template
     , rio
     , safe-exceptions

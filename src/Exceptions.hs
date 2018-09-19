@@ -6,7 +6,7 @@ module Exceptions
 
 import           RIO
 
-import           Database.Persist.Sqlite (fromSqlKey)
+import           Database.Persist.Postgresql (fromSqlKey)
 import           RIO.Text                (unpack)
 
 import           Model                   (DBTweetId, DBUserId, UserName (..))

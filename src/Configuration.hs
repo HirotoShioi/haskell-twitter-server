@@ -6,14 +6,14 @@ module Configuration
 
 import           RIO
 
+import           Database.Persist.Postgresql
+
 -- | Configuration
 data Config = Config {
-       cfgProductionDBPath  :: !FilePath
-     -- ^ Filepath to the production database
-     , cfgDevelopmentDBPath :: !FilePath
-     -- ^ Filepath to the development databse
-     , cfgPortNumber        :: !PortNumber
+       cfgPortNumber        :: !PortNumber
      -- ^ Port number used for server
+     , cfgConnectionString  :: !ConnectionString
+     -- ^ Connection string
      , cfgTweetLength       :: !Int
      -- ^ Length of an tweet
      , cfgUserNameMinLength :: !Int
@@ -29,11 +29,31 @@ type PortNumber = Int
 -- | Default configuration
 defaultConfig :: Config
 defaultConfig = Config {
-      cfgProductionDBPath  = "sqlite.db"
-    , cfgDevelopmentDBPath = "sqlite.db"
-    , cfgPortNumber        = 3000
+      cfgPortNumber        = 3000
+    , cfgConnectionString  = connStr
     , cfgTweetLength       = 140
     , cfgUserNameMinLength = 3
     , cfgUserNameMaxLength = 20
     , cfgServerName        = "Haskell Twitter server"
     }
+
+-- | Replace with yaml file!!
+connStr :: ConnectionString    
+connStr = "host=localhost dbname=perservant user=test password=test port=5432"
+
+-- version: '3.1'
+
+-- services:
+--   postgres:
+--     image: postgres
+--     ports:
+--       - '127.0.0.1:5432:5432'
+--     environment:
+--       - POSTGRES_PASSWORD=test
+--       - POSTGRES_USER=test
+--       - POSTGRES_DB=perservant
+--     volumes:
+--       - perservant-db:/var/lib/postgresql/data:rw
+
+-- volumes:
+--   perservant-db:
