@@ -9,23 +9,23 @@
 
 module Model where
 
-import           RIO                     hiding ((^.))
+import           RIO                         hiding ((^.))
 
-import           Control.Lens            (makeLenses, (^.))
-import           Data.Aeson              (ToJSON (..), object, (.=))
-import           Data.Char               (isAscii)
+import           Control.Lens                (makeLenses, (^.))
+import           Data.Aeson                  (ToJSON (..), object, (.=))
+import           Data.Char                   (isAscii)
 
 import           Database.Persist.Postgresql (Key, fromSqlKey, toSqlKey)
 import           Database.Persist.TH
 
-import qualified RIO.Text                as T
-import           RIO.Time                (UTCTime (..), fromGregorian)
+import qualified RIO.Text                    as T
+import           RIO.Time                    (UTCTime (..), fromGregorian)
 
-import           Servant                 (FromHttpApiData (..))
-import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
-                                          vectorOf)
+import           Servant                     (FromHttpApiData (..))
+import           Test.QuickCheck             (Arbitrary (..), Gen, choose,
+                                              elements, vectorOf)
 
-import           Configuration           (Config (..))
+import           Configuration               (Config (..))
 
 --------------------------------------------------------------------------------
 -- Database Schema

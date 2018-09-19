@@ -7,9 +7,10 @@ module Exceptions
 import           RIO
 
 import           Database.Persist.Postgresql (fromSqlKey)
-import           RIO.Text                (unpack)
+import           RIO.Text                    (unpack)
 
-import           Model                   (DBTweetId, DBUserId, UserName (..))
+import           Model                       (DBTweetId, DBUserId,
+                                              UserName (..))
 
 -- | Exceptions for twitter server
 data TwitterException =
