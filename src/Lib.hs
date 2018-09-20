@@ -38,7 +38,7 @@ import           Model                       (DBTweet (..), DBTweetId,
                                               tCreatedAt, tMentions, tReplies)
 import           Util                        (maybeM, whenJust)
 
-import           Configuration               (Config (..))
+import           Configuration               (Config (..), Env(..))
 
 --------------------------------------------------------------------------------
 -- Polishing logics (sort, filter)
@@ -187,9 +187,9 @@ dbUserToUser (Entity uid dbuser) = do
 --------------------------------------------------------------------------------
 
 -- | Get tweets with username
-getTweetsByUser :: ConnectionPool -> UserName -> IO (Sorted [Tweet])
-getTweetsByUser pool username = do
-    tweets <- flip runSqlPersistMPool pool $ do
+getTweetsByUser :: UserName -> RIO Env (Sorted [Tweet])
+getTweetsByUser username = do
+    tweets <- runWithPool $ do
         eUserId <- try $ entityKey <$> getUserByNameDB username
         case eUserId of
             Left (_ :: TwitterException) -> return []
@@ -203,9 +203,9 @@ getTweetsByUser pool username = do
     return $ sortTweetsByCreatedAt tweets
 
 -- | Get tweet by its Id
-getTweetById :: ConnectionPool -> DBTweetId -> IO (Sorted Tweet)
-getTweetById pool tweetId =
-    flip runSqlPersistMPool pool $ do
+getTweetById :: DBTweetId -> RIO Env (Sorted Tweet)
+getTweetById tweetId =
+    runWithPool $ do
         (rootId, rootAuthor) <- findRootId tweetId
         sortTweetByCreatedAt <$> getTweetByIdDB True rootAuthor rootId
   where
@@ -221,23 +221,22 @@ getTweetById pool tweetId =
             Just a  !? _    = ContT ($ a)
 
 -- | Get user by name
-getUserByName :: ConnectionPool -> UserName -> IO User
-getUserByName pool userName =
-    flip runSqlPersistMPool pool $ do
+getUserByName :: UserName -> RIO Env User
+getUserByName userName =
+    runWithPool $ do
         eDBUser <- getUserByNameDB userName
         dbUserToUser eDBUser
 
 -- | Insert a tweet
 -- Perhaps replace userName with userId?
 -- Needs validation on TweetText
-insertTweet :: ConnectionPool
-            -> UserName
+insertTweet :: UserName
             -> TweetText
             -> Maybe DBTweetId
             -> [DBUserId]
-            -> IO (Sorted Tweet)
-insertTweet pool postUser content mReplyTo mentions =
-    flip runSqlPersistMPool pool $ do
+            -> RIO Env (Sorted Tweet)
+insertTweet postUser content mReplyTo mentions =
+    runWithPool $ do
         currTime  <- getCurrentTime
         ePostUser <- getUserByNameDB postUser
         edbt      <- insertEntity DBTweet
@@ -268,13 +267,13 @@ insertTweet pool postUser content mReplyTo mentions =
         sortTweetByCreatedAt <$> dbTweetToTweet True (entityKey ePostUser) edbt
 
 -- | Insert an user with given name
-insertUser :: ConnectionPool -> Config -> UserName -> IO User
-insertUser pool config name =
+insertUser :: Config -> UserName -> RIO Env User
+insertUser config name =
     case validate config name of
         Left e -> throwM e
         Right validName -> do
             let userName = getUserName validName
-            flip runSqlPersistMPool pool $ do
+            runWithPool $ do
                 mUser <- getBy $ UniqueUserName userName
                 if isJust mUser
                     then throwM $ UserNameAlreadyExists name
@@ -287,18 +286,22 @@ insertUser pool config name =
 --------------------------------------------------------------------------------
 
 -- | Get most recent tweetId
-getLatestTweetId :: ConnectionPool -> IO (Maybe DBTweetId)
-getLatestTweetId pool =
-    flip runSqlPersistMPool pool $ do
+getLatestTweetId :: RIO Env (Maybe DBTweetId)
+getLatestTweetId =
+    runWithPool $ do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
         return $ entityKey <$> mTweet
 
 -- | Get user ids
-getUserLists :: ConnectionPool -> IO [(DBUserId, UserName)]
-getUserLists pool =
-    flip runSqlPersistMPool pool $ do
+getUserLists :: RIO Env [(DBUserId, UserName)]
+getUserLists = runWithPool $ do
         userLists <- selectList [] [Asc DBUserName]
         let userIdWithNames = map
                 (\(Entity k u) -> (k, UserName $ dBUserName u))
                 userLists
         return userIdWithNames
+
+runWithPool :: SqlPersistM a -> RIO Env a
+runWithPool action = do
+    pool <- envPool <$> ask
+    liftIO $ runSqlPersistMPool action pool

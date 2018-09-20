@@ -2,6 +2,7 @@
 
 module Configuration
     ( Config(..)
+    , Env(..)
     , defaultConfig
     , PortNumber
     , setupConfig
@@ -11,7 +12,7 @@ import           RIO
 
 import           Data.Aeson                  (FromJSON (..), withObject, (.:))
 import           Data.Yaml                   (decodeFileEither)
-import           Database.Persist.Postgresql
+import           Database.Persist.Postgresql (ConnectionString, ConnectionPool)
 import           Say
 
 import           Util                        (eitherM)
@@ -79,6 +80,15 @@ instance FromJSON DBConfig where
          port     <- o .: "port"
 
          pure $ DBConfig host dbname user password port
+
+data Env = Env {
+      envLogFunc :: !LogFunc
+    , envConfig  :: !Config
+    , envPool    :: !ConnectionPool
+    }
+
+instance HasLogFunc Env where
+    logFuncL = lens envLogFunc (\x y -> x { envLogFunc = y })
 
 -- | Setup configuration
 setupConfig :: IO Config

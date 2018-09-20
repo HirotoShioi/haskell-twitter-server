@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Generator
@@ -7,25 +8,26 @@ module Generator
 
 import           RIO
 
-import           Configuration           (Config (..), setupConfig)
-import           Control.Lens            ((&), (.~))
-import           Control.Monad.Logger    (runStderrLoggingT)
+import           Control.Lens                ((&), (.~))
+import           Control.Monad.Logger        (runNoLoggingT)
 
 import           Database.Persist.Postgresql
+import qualified RIO.Text                    as T
+import           Say                         (say)
+import           Test.QuickCheck             (Gen, arbitrary, choose, elements,
+                                              generate, vectorOf)
 
-import           Exceptions              (TwitterException (..))
-import           Lib                     (getLatestTweetId, getSorted,
-                                          getTweetById, getUserLists,
-                                          insertTweet, insertUser)
-import           Model                   (Tweet (..), TweetText (..),
-                                          UserName (..), ValidationException,
-                                          migrateAll, tAuthor, tMentions,
-                                          tReplies, tReplyTo, tText,
-                                          testUserList)
-import qualified RIO.Text                as T
-import           Say                     (say)
-import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
-                                          generate, vectorOf)
+import           Configuration               (Config (..), Env (..),
+                                              setupConfig)
+import           Exceptions                  (TwitterException (..))
+import           Lib                         (getLatestTweetId, getSorted,
+                                              getTweetById, getUserLists,
+                                              insertTweet, insertUser)
+import           Model                       (Tweet (..), TweetText (..),
+                                              UserName (..),
+                                              ValidationException, migrateAll,
+                                              tAuthor, tMentions, tReplies,
+                                              tReplyTo, tText, testUserList)
 
 --------------------------------------------------------------------------------
 -- Random generator to facilitate data insertion
@@ -35,41 +37,41 @@ import           Test.QuickCheck         (Gen, arbitrary, choose, elements,
 data TweetType =  Normal | Response
 
 -- | Insert random tweets into the database
-tweetRandomly :: ConnectionPool-> Int -> IO ()
-tweetRandomly pool num = do
-     randomList <- generate $ vectorOf num (elements [Normal, Response])
+tweetRandomly :: Int -> RIO Env ()
+tweetRandomly num = do
+     randomList <- liftIO $ generate $ vectorOf num (elements [Normal, Response])
 
      forM_ randomList $ \case
-        Normal   -> insertRandomTweet pool
-        Response -> replyRandomTweet pool
+        Normal   -> insertRandomTweet
+        Response -> replyRandomTweet
 
 -- | Insert random tweet
-insertRandomTweet :: ConnectionPool -> IO ()
-insertRandomTweet pool = do
-    randomTweet <- generate mkRandomTweet
+insertRandomTweet :: RIO Env ()
+insertRandomTweet = do
+    randomTweet <- liftIO $ generate mkRandomTweet
     let userName = randomTweet ^. tAuthor
         content  = randomTweet ^. tText
-    ignoreException $ void $ insertTweet pool userName content Nothing []
+    ignoreException $ void $ insertTweet userName content Nothing []
 
 -- | Reply to random tweet
 -- Write better reply (add @Mention)
-replyRandomTweet :: ConnectionPool -> IO ()
-replyRandomTweet pool = do
+replyRandomTweet :: RIO Env ()
+replyRandomTweet = do
     -- Need to fetch random tweet
-    latestTweetId <- getLatestTweetId pool
+    latestTweetId <- getLatestTweetId
     case latestTweetId of
-        Nothing   -> insertRandomTweet pool
+        Nothing   -> insertRandomTweet
         (Just num) -> do
             -- Get random tweet
-            randomId <- generate $ elements [1 .. (fromSqlKey num)]
-            randomlyFetchedTweet <- getSorted <$> getTweetById pool (toSqlKey randomId)
+            randomId <- liftIO $ generate $ elements [1 .. (fromSqlKey num)]
+            randomlyFetchedTweet <- getSorted <$> getTweetById (toSqlKey randomId)
 
             -- Generate random reply
-            randomReply <- generate mkRandomTweet
+            randomReply <- liftIO $ generate mkRandomTweet
 
             -- Fetch list of users with their ids in tuple (UserName, DBUserId)
-            userLists <- getUserLists pool
-            numOfUsers <- generate $ choose (0, 3)
+            userLists <- getUserLists
+            numOfUsers <- liftIO $ generate $ choose (0, 3)
             let mentionedUsers = take numOfUsers userLists
 
             -- Modify content
@@ -90,7 +92,7 @@ replyRandomTweet pool = do
             let postUser = randomReply ^. tAuthor
             let mentionedUserIds = map fst mentionedUsers
             ignoreException $
-                void $ insertTweet pool postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
+                void $ insertTweet postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet
@@ -102,23 +104,25 @@ mkRandomTweet = do
         & tMentions .~ []
 
 -- | Insert Users into given databse
-insertUsers :: ConnectionPool -> Config -> [UserName] -> IO ()
-insertUsers pool config users = do
-    runSqlPool (runMigration migrateAll) pool
+insertUsers :: [UserName] -> RIO Env ()
+insertUsers users = do
+    pool <- envPool <$> ask
+    config <- envConfig <$> ask
+    liftIO $ runSqlPool (runMigration migrateAll) pool
 
     forM_ users $ \user ->
-        ignoreException $ void $ insertUser pool config user
+        ignoreException $ void $ insertUser config user
 
 -- | Exception handling for generator
-ignoreException :: IO () -> IO ()
+ignoreException :: RIO Env () -> RIO Env ()
 ignoreException action = catches action
     [Handler handleTwitterException, Handler handleValidationException]
   where
-    handleTwitterException :: TwitterException -> IO ()
+    handleTwitterException :: TwitterException -> RIO Env ()
     handleTwitterException = handleException
-    handleValidationException :: ValidationException -> IO ()
+    handleValidationException :: ValidationException -> RIO Env ()
     handleValidationException = handleException
-    handleException :: (Exception e) => e -> IO ()
+    handleException :: (Exception e) => e -> RIO Env ()
     handleException e = do
         say $ tshow e
         return ()
@@ -128,10 +132,12 @@ ignoreException action = catches action
 -- If true, it'll insert user data as well.
 insertRandomDataIntoEmptyDB :: Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB shouldInsertUsers numOfTweets = do
-    config <- setupConfig
-    pool   <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
+    envConfig <- setupConfig
+    envPool   <- liftIO $ runNoLoggingT $ createPostgresqlPool (cfgConnectionString envConfig) 5
+    logOpts   <- logOptionsHandle stdout False
+    liftIO $ withLogFunc logOpts $ \envLogFunc -> do
+        let env = Env envLogFunc envConfig envPool
 
-    when shouldInsertUsers $
-       insertUsers pool config testUserList
+        when shouldInsertUsers $ runRIO env (insertUsers testUserList)
 
-    tweetRandomly pool numOfTweets
+        runRIO env (tweetRandomly numOfTweets)
