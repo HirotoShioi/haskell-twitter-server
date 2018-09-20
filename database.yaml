@@ -1,0 +1,5 @@
+host: localhost
+dbname: perservant
+user: test
+password: test
+port: 5432

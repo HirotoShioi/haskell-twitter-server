@@ -27,7 +27,7 @@ dependencies:
 - rio
 - QuickCheck
 - persistent
-- persistent-sqlite
+- persistent-postgresql
 - persistent-template
 - safe-exceptions
 - say
@@ -35,6 +35,7 @@ dependencies:
 - string-conversions
 - transformers
 - warp
+- yaml
 
 ghc-options:
 - -Wall

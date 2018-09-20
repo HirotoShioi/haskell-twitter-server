@@ -10,8 +10,8 @@ import           RIO
 
 import           Servant
 
-import           Model   (Tweet, User, UserName)
 import           Lib     (Sorted)
+import           Model   (Tweet, User, UserName)
 
 
 -- | Twitter endpoint

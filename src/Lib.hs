@@ -15,30 +15,30 @@ module Lib
 
 import           RIO
 
-import           Control.Lens             ((%~))
-import           Control.Monad.Trans.Cont (ContT (..), evalContT)
+import           Control.Lens                ((%~))
+import           Control.Monad.Trans.Cont    (ContT (..), evalContT)
 
 import           Data.Aeson
-import           Data.List                (maximum, nub, sortBy)
+import           Data.List                   (maximum, nub, sortBy)
 import           Database.Persist
-import           Database.Persist.Sqlite
+import           Database.Persist.Postgresql
 
-import qualified RIO.Map                  as M
+import qualified RIO.Map                     as M
 
-import           RIO.Time                 (getCurrentTime)
+import           RIO.Time                    (getCurrentTime)
 
-import           Exceptions               (TwitterException (..))
-import           Model                    (DBTweet (..), DBTweetId, DBUser (..),
-                                           DBUserId, EntityField (..),
-                                           Mention (..), Mentions (..),
-                                           Reply (..), Tweet (..),
-                                           TweetText (..), Unique (..),
-                                           User (..), UserName (..),
-                                           Validate (..), mId, tCreatedAt,
-                                           tMentions, tReplies)
-import           Util                     (maybeM, whenJust)
+import           Exceptions                  (TwitterException (..))
+import           Model                       (DBTweet (..), DBTweetId,
+                                              DBUser (..), DBUserId,
+                                              EntityField (..), Mention (..),
+                                              Mentions (..), Reply (..),
+                                              Tweet (..), TweetText (..),
+                                              Unique (..), User (..),
+                                              UserName (..), Validate (..), mId,
+                                              tCreatedAt, tMentions, tReplies)
+import           Util                        (maybeM, whenJust)
 
-import           Configuration            (Config (..))
+import           Configuration               (Config (..))
 
 --------------------------------------------------------------------------------
 -- Polishing logics (sort, filter)
@@ -298,7 +298,7 @@ getUserLists :: ConnectionPool -> IO [(DBUserId, UserName)]
 getUserLists pool =
     flip runSqlPersistMPool pool $ do
         userLists <- selectList [] [Asc DBUserName]
-        let userIdNames = map
+        let userIdWithNames = map
                 (\(Entity k u) -> (k, UserName $ dBUserName u))
                 userLists
-        return userIdNames
+        return userIdWithNames

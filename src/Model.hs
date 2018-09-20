@@ -9,23 +9,23 @@
 
 module Model where
 
-import           RIO                     hiding ((^.))
+import           RIO                         hiding ((^.))
 
-import           Control.Lens            (makeLenses, (^.))
-import           Data.Aeson              (ToJSON (..), object, (.=))
-import           Data.Char               (isAscii)
+import           Control.Lens                (makeLenses, (^.))
+import           Data.Aeson                  (ToJSON (..), object, (.=))
+import           Data.Char                   (isAscii)
 
-import           Database.Persist.Sqlite (Key, fromSqlKey, toSqlKey)
+import           Database.Persist.Postgresql (Key, fromSqlKey, toSqlKey)
 import           Database.Persist.TH
 
-import qualified RIO.Text                as T
-import           RIO.Time                (UTCTime (..), fromGregorian)
+import qualified RIO.Text                    as T
+import           RIO.Time                    (UTCTime (..), fromGregorian)
 
-import           Servant                 (FromHttpApiData (..))
-import           Test.QuickCheck         (Arbitrary (..), Gen, choose, elements,
-                                          vectorOf)
+import           Servant                     (FromHttpApiData (..))
+import           Test.QuickCheck             (Arbitrary (..), Gen, choose,
+                                              elements, vectorOf)
 
-import           Configuration           (Config (..))
+import           Configuration               (Config (..))
 
 --------------------------------------------------------------------------------
 -- Database Schema
@@ -41,20 +41,20 @@ DBUser
 DBTweet
     text Text
     authorId DBUserId
-    createdAt UTCTime default=CURRENT_TIME
+    createdAt UTCTime default=now()
     replyTo DBTweetId Maybe
     deriving Show
 -- | Relational table for replies
 Reply
     parent DBTweetId
     child  DBTweetId
-    createdAt UTCTime default=CURRENT_TIME
+    createdAt UTCTime default=now()
 -- | Mention table
 Mentions
     tweetId DBTweetId
     userId  DBUserId
     UniqueMention tweetId userId
-    mentionedAt UTCTime default=CURRENT_TIME
+    mentionedAt UTCTime default=now()
 |]
 
 --------------------------------------------------------------------------------
@@ -332,4 +332,3 @@ instance Show ValidationException where
             "Given content is too long, must be shorter than " <> show num <> " characters"
         EmptyTweet             ->
             "Empty content has been given, must include something."
-

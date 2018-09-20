@@ -6,29 +6,31 @@ module Server
 
 import           RIO
 
-import qualified RIO.ByteString.Lazy as LBS
-import qualified RIO.Text as T
-import           Control.Exception.Safe   as C (Handler (..), catches)
-import           Control.Monad.Logger     (runStderrLoggingT)
+import           Control.Exception.Safe      as C (Handler (..), catches)
+import           Control.Monad.Logger        (runStderrLoggingT)
+import qualified RIO.ByteString.Lazy         as LBS
+import qualified RIO.Text                    as T
 
-import           Data.Aeson               (ToJSON)
-import           Data.String.Conversions  (cs)
-import           Database.Persist.Sqlite  (ConnectionPool, createSqlitePool,
-                                           runMigration, runSqlPool, toSqlKey)
+import           Data.Aeson                  (ToJSON)
+import           Database.Persist.Postgresql (ConnectionPool,
+                                              createPostgresqlPool,
+                                              runMigration, runSqlPool,
+                                              toSqlKey)
 
-import           Network.Wai.Handler.Warp as Warp
+import           Network.Wai.Handler.Warp    as Warp
 
-import           Say                      (say)
-import           Servant                  as S
+import           Say                         (say)
+import           Servant                     as S
 
-import           Api                      (Api, api)
-import           Configuration            (Config (..), defaultConfig)
-import           Exceptions               (TwitterException (..))
-import           Lib                      (Sorted, getTweetById,
-                                           getTweetsByUser, getUserByName,
-                                           insertUser)
-import           Model                    (Tweet (..), User (..), UserName,
-                                           ValidationException (..), migrateAll)
+import           Api                         (Api, api)
+import           Configuration               (Config (..), setupConfig)
+import           Exceptions                  (TwitterException (..))
+import           Lib                         (Sorted, getTweetById,
+                                              getTweetsByUser, getUserByName,
+                                              insertUser)
+import           Model                       (Tweet (..), User (..), UserName,
+                                              ValidationException (..),
+                                              migrateAll)
 
 -- | Server endpoints
 server :: ServerT Api AppM
@@ -90,22 +92,25 @@ app config = serve api $ hoistServer api (nt config) server
 -- | Run application with given file as database
 mkApp :: Config -> IO Application
 mkApp config = do
-    pool <- runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
+    pool <- runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
 
     runSqlPool (runMigration migrateAll) pool
     return $ app config
-
--- | Run twitter server
-runTwitterServer :: IO ()
-runTwitterServer = do
-    let config = defaultConfig
-    say $ "Starting " <> cfgServerName config <> " on port " <> tshow (cfgPortNumber config)
-    application <- mkApp config
-    Warp.run (cfgPortNumber config) application
 
 -- | Run given action with connection pool
 withConnPool :: (ToJSON a) => (ConnectionPool -> IO a)-> AppM a
 withConnPool action = do
     config <- ask
-    pool   <- liftIO $ runStderrLoggingT $ createSqlitePool (cs $ cfgDevelopmentDBPath config) 5
+    pool   <- liftIO $ runStderrLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
     liftIO $ action pool
+
+-- | Run twitter server
+runTwitterServer :: IO ()
+runTwitterServer = do
+
+    config <- setupConfig
+
+    say $ "Starting " <> cfgServerName config <> " on port " <> tshow (cfgPortNumber config)
+
+    application <- mkApp config
+    Warp.run (cfgPortNumber config) application
