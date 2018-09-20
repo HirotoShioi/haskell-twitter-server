@@ -41,20 +41,20 @@ DBUser
 DBTweet
     text Text
     authorId DBUserId
-    createdAt UTCTime -- Cannot set default value on postgres.. Need to investigate
+    createdAt UTCTime default=now()
     replyTo DBTweetId Maybe
     deriving Show
 -- | Relational table for replies
 Reply
     parent DBTweetId
     child  DBTweetId
-    createdAt UTCTime
+    createdAt UTCTime default=now()
 -- | Mention table
 Mentions
     tweetId DBTweetId
     userId  DBUserId
     UniqueMention tweetId userId
-    mentionedAt UTCTime
+    mentionedAt UTCTime default=now()
 |]
 
 --------------------------------------------------------------------------------
