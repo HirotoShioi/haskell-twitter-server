@@ -5,7 +5,7 @@ module Configuration
     , Env(..)
     , defaultConfig
     , PortNumber
-    , setupConfig
+    , defaultConfig
     ) where
 
 import           RIO
@@ -36,8 +36,8 @@ data Config = Config {
 type PortNumber = Int
 
 -- | Default configuration
-defaultConfig :: Config
-defaultConfig = Config {
+defaultConfig' :: Config
+defaultConfig' = Config {
       cfgPortNumber        = 3000
     , cfgConnectionString  = "This is connection string"
     , cfgTweetLength       = 140
@@ -56,6 +56,15 @@ data DBConfig = DBConfig {
     , cfgDBPort   :: !PortNumber
     }
 
+data Env = Env {
+    envLogFunc :: !LogFunc
+    , envConfig  :: !Config
+    , envPool    :: !ConnectionPool
+    }
+
+instance HasLogFunc Env where
+    logFuncL = lens envLogFunc (\x y -> x { envLogFunc = y })
+      
 -- | Make connection string based upon DBConfig
 mkConnStr :: DBConfig -> ConnectionString
 mkConnStr DBConfig{..} = fromString $
@@ -81,19 +90,10 @@ instance FromJSON DBConfig where
 
          pure $ DBConfig host dbname user password port
 
-data Env = Env {
-      envLogFunc :: !LogFunc
-    , envConfig  :: !Config
-    , envPool    :: !ConnectionPool
-    }
-
-instance HasLogFunc Env where
-    logFuncL = lens envLogFunc (\x y -> x { envLogFunc = y })
-
 -- | Setup configuration
-setupConfig :: IO Config
-setupConfig = do
-    let config = defaultConfig
+defaultConfig :: IO Config
+defaultConfig = do
+    let config = defaultConfig'
     say "Reading config file"
 
     dbConfig <- eitherM throwM return (decodeFileEither "database.yaml")

@@ -18,7 +18,7 @@ import           Test.QuickCheck             (Gen, arbitrary, choose, elements,
                                               generate, vectorOf)
 
 import           Configuration               (Config (..), Env (..),
-                                              setupConfig)
+                                              defaultConfig)
 import           Exceptions                  (TwitterException (..))
 import           Lib                         (getLatestTweetId, getSorted,
                                               getTweetById, getUserLists,
@@ -132,7 +132,7 @@ ignoreException action = catches action
 -- If true, it'll insert user data as well.
 insertRandomDataIntoEmptyDB :: Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB shouldInsertUsers numOfTweets = do
-    envConfig <- setupConfig
+    envConfig <- defaultConfig
     envPool   <- liftIO $ runNoLoggingT $ createPostgresqlPool (cfgConnectionString envConfig) 5
     logOpts   <- logOptionsHandle stdout False
     liftIO $ withLogFunc logOpts $ \envLogFunc -> do

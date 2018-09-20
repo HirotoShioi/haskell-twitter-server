@@ -25,7 +25,8 @@ import           Say                         (say)
 import           Servant                     as S
 
 import           Api                         (Api, api)
-import           Configuration               (Config (..), setupConfig, Env(..))
+import           Configuration               (Config (..), Env (..),
+                                              defaultConfig)
 import           Exceptions                  (TwitterException (..))
 import           Lib                         (Sorted, getTweetById,
                                               getTweetsByUser, getUserByName,
@@ -104,14 +105,14 @@ runAction action = do
     envConfig <- ask -- This is actually confusing
     envPool   <- liftIO $ runNoLoggingT $ createPostgresqlPool (cfgConnectionString envConfig) 5
     logOpts   <- logOptionsHandle stdout False
-    liftIO $ withLogFunc logOpts $ \envLogFunc -> 
+    liftIO $ withLogFunc logOpts $ \envLogFunc ->
         runRIO Env{..} action
 
 -- | Run twitter server
 runTwitterServer :: IO ()
 runTwitterServer = do
 
-    config <- setupConfig
+    config <- defaultConfig
 
     say $ "Starting " <> cfgServerName config <> " on port " <> tshow (cfgPortNumber config)
 
