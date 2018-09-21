@@ -38,7 +38,7 @@ import           Model                       (DBTweet (..), DBTweetId,
                                               tCreatedAt, tMentions, tReplies)
 import           Util                        (maybeM, whenJust)
 
-import           Configuration               (Config (..), Env(..))
+import           Configuration               (Env(..))
 
 --------------------------------------------------------------------------------
 -- Polishing logics (sort, filter)
@@ -189,6 +189,7 @@ dbUserToUser (Entity uid dbuser) = do
 -- | Get tweets with username
 getTweetsByUser :: UserName -> RIO Env (Sorted [Tweet])
 getTweetsByUser username = do
+    logInfo $ "Fetching tweets of an username " <> displayShow (getUserName username)
     tweets <- runWithPool $ do
         eUserId <- try $ entityKey <$> getUserByNameDB username
         case eUserId of
@@ -204,7 +205,8 @@ getTweetsByUser username = do
 
 -- | Get tweet by its Id
 getTweetById :: DBTweetId -> RIO Env (Sorted Tweet)
-getTweetById tweetId =
+getTweetById tweetId = do
+    logInfo $ "Fetching tweet with an id of " <> displayShow (fromSqlKey tweetId)
     runWithPool $ do
         (rootId, rootAuthor) <- findRootId tweetId
         sortTweetByCreatedAt <$> getTweetByIdDB True rootAuthor rootId
@@ -222,7 +224,8 @@ getTweetById tweetId =
 
 -- | Get user by name
 getUserByName :: UserName -> RIO Env User
-getUserByName userName =
+getUserByName userName = do
+    logInfo $ "Fetching user profile: " <> displayShow (getUserName userName)
     runWithPool $ do
         eDBUser <- getUserByNameDB userName
         dbUserToUser eDBUser
@@ -235,7 +238,8 @@ insertTweet :: UserName
             -> Maybe DBTweetId
             -> [DBUserId]
             -> RIO Env (Sorted Tweet)
-insertTweet postUser content mReplyTo mentions =
+insertTweet postUser content mReplyTo mentions = do
+    logInfo $ "Inserting tweet by " <> displayShow (getUserName postUser)
     runWithPool $ do
         currTime  <- getCurrentTime
         ePostUser <- getUserByNameDB postUser
@@ -267,8 +271,10 @@ insertTweet postUser content mReplyTo mentions =
         sortTweetByCreatedAt <$> dbTweetToTweet True (entityKey ePostUser) edbt
 
 -- | Insert an user with given name
-insertUser :: Config -> UserName -> RIO Env User
-insertUser config name =
+insertUser :: UserName -> RIO Env User
+insertUser name = do
+    logInfo $ "Inserting user " <> displayShow (getUserName name)
+    config <- envConfig <$> ask
     case validate config name of
         Left e -> throwM e
         Right validName -> do
@@ -287,14 +293,17 @@ insertUser config name =
 
 -- | Get most recent tweetId
 getLatestTweetId :: RIO Env (Maybe DBTweetId)
-getLatestTweetId =
+getLatestTweetId = do
+    logInfo "Fetching latest tweetId"
     runWithPool $ do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
         return $ entityKey <$> mTweet
 
 -- | Get user ids
 getUserLists :: RIO Env [(DBUserId, UserName)]
-getUserLists = runWithPool $ do
+getUserLists = do
+    logInfo "Fetching list of users"
+    runWithPool $ do
         userLists <- selectList [] [Asc DBUserName]
         let userIdWithNames = map
                 (\(Entity k u) -> (k, UserName $ dBUserName u))

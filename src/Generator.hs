@@ -107,11 +107,10 @@ mkRandomTweet = do
 insertUsers :: [UserName] -> RIO Env ()
 insertUsers users = do
     pool <- envPool <$> ask
-    config <- envConfig <$> ask
     liftIO $ runSqlPool (runMigration migrateAll) pool
 
     forM_ users $ \user ->
-        ignoreException $ void $ insertUser config user
+        ignoreException $ void $ insertUser user
 
 -- | Exception handling for generator
 ignoreException :: RIO Env () -> RIO Env ()

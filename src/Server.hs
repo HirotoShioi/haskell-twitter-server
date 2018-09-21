@@ -56,9 +56,8 @@ getUserProfileH userName = runAction $ getUserByName userName
 
 -- | Create user with given UserName
 createUserH :: UserName -> AppM User
-createUserH userName = do
-    cfg <- ask
-    handleWithException $ runAction $ insertUser cfg userName
+createUserH userName =
+    handleWithException $ runAction $ insertUser userName
 
 -- | Get Tweet by its Id
 getTweetByIdH :: Int64 -> AppM (Sorted Tweet)
