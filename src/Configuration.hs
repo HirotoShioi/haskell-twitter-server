@@ -5,7 +5,6 @@ module Configuration
     , Env(..)
     , defaultConfig
     , PortNumber
-    , defaultConfig
     ) where
 
 import           RIO
@@ -57,7 +56,7 @@ data DBConfig = DBConfig {
     }
 
 data Env = Env {
-    envLogFunc :: !LogFunc
+      envLogFunc :: !LogFunc
     , envConfig  :: !Config
     , envPool    :: !ConnectionPool
     }
