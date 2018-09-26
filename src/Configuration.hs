@@ -1,5 +1,17 @@
 {-# LANGUAGE RecordWildCards #-}
 
+{-|
+Module      : Configuration
+Description : All the configuration are defined here
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module contains all the configuration needed to start an server
+-}
+
 module Configuration
     ( Config(..)
     , Env(..)
@@ -16,7 +28,7 @@ import           Say
 
 import           Util                        (eitherM)
 
--- | Configuration
+-- | Configuration of an application
 data Config = Config {
        cfgPortNumber        :: !PortNumber
      -- ^ Port number used for server
@@ -32,6 +44,7 @@ data Config = Config {
      -- ^ Name of the server
      }
 
+-- | PortNumber used for server
 type PortNumber = Int
 
 -- | Default configuration
@@ -55,16 +68,20 @@ data DBConfig = DBConfig {
     , cfgDBPort   :: !PortNumber
     }
 
+-- | Environment for the server
 data Env = Env {
       envLogFunc :: !LogFunc
+    -- ^ 'LogFunc' used for logging within application
     , envConfig  :: !Config
+    -- ^ Basic configuration of an application
     , envPool    :: !ConnectionPool
+    -- ^ 'ConnectionPool' used to connect to the database
     }
 
 instance HasLogFunc Env where
     logFuncL = lens envLogFunc (\x y -> x { envLogFunc = y })
       
--- | Make connection string based upon DBConfig
+-- | Create 'ConnectionString' based upon 'DBConfig'
 mkConnStr :: DBConfig -> ConnectionString
 mkConnStr DBConfig{..} = fromString $
     concat ["host="
@@ -89,7 +106,7 @@ instance FromJSON DBConfig where
 
          pure $ DBConfig host dbname user password port
 
--- | Setup configuration
+-- | Setup default configuration
 defaultConfig :: IO Config
 defaultConfig = do
     let config = defaultConfig'

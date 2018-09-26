@@ -1,5 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
 
+{-|
+Module      : Exceptions
+Description : Defines exception that can occur on a server
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module defines exceptions that can occur upon running server
+-}
+
 module Exceptions
     ( TwitterException (..)
     ) where

@@ -1,6 +1,17 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Server
+Description : Defines endpoint logics
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module defines endpoint logics of an application.
+-}
 
 module Server
     ( runTwitterServer
@@ -46,26 +57,26 @@ server = getTweetsByUserH
 -- Endpoint handling
 --------------------------------------------------------------------------------
 
--- | Get all the tweets from user
+-- | Return all the tweets related to given 'UserName'
 getTweetsByUserH :: UserName -> AppM (Sorted [Tweet])
 getTweetsByUserH userName = runAction $ getTweetsByUser userName
 
--- | Get user profile
+-- | Return profile of an user with given 'UserName'
 getUserProfileH :: UserName -> AppM User
 getUserProfileH userName = runAction $ getUserByName userName
 
--- | Create user with given UserName
+-- | Create user with given 'UserName'
 createUserH :: UserName -> AppM User
 createUserH userName =
     handleWithException $ runAction $ insertUser userName
 
--- | Get Tweet by its Id
+-- | Get Tweet with given 'TweetId'
 getTweetByIdH :: Int64 -> AppM (Sorted Tweet)
 getTweetByIdH tweetNum = do
     let tweetId = toSqlKey tweetNum
     handleWithException $ runAction $ getTweetById tweetId
 
--- | Exception handling
+-- | Exception handling for endpoints
 handleWithException :: (ToJSON a) => AppM a -> AppM a
 handleWithException action = C.catches action
      [C.Handler validationHandler, C.Handler twitterHandler]
@@ -83,10 +94,11 @@ handleWithException action = C.catches action
 
 type AppM = ReaderT Config S.Handler
 
+-- | Natural transformation from 'AppM' to 'Handler'
 nt :: Config -> AppM a -> S.Handler a
 nt c x = runReaderT x c
 
--- (TODO): Use proper SQL?
+-- | Application
 app :: Config -> Application
 app config = serve api $ hoistServer api (nt config) server
 

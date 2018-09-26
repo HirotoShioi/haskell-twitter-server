@@ -1,7 +1,20 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Lib
+Description : Module defining business logic
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This modules defines business logics used for fetching/inserting data.
+-}
+
 module Lib
-    ( getTweetsByUser
+    ( Sorted
+    , getTweetsByUser
     , getTweetById
     , getUserByName
     , getLatestTweetId
@@ -9,7 +22,6 @@ module Lib
     , insertTweet
     , insertUser
     , isTweetSorted
-    , Sorted
     , getSorted
     ) where
 
@@ -44,15 +56,20 @@ import           Configuration               (Env(..))
 -- Polishing logics (sort, filter)
 --------------------------------------------------------------------------------
 
-newtype Sorted a = Sorted {getSorted :: a}
+-- | Newtype wrapper to indicate that the given datatype is sorted
+newtype Sorted a = Sorted {
+    getSorted :: a
+    -- ^ Unwraps 'Sorted' wrapper
+    }
 
 instance (ToJSON a) => ToJSON (Sorted a) where
     toJSON (Sorted a) = toJSON a
 
--- | Default SelectOpt
+-- | Default 'SelectOpt' for 'DBTweet'
 defaultTweetSelectOpt :: [SelectOpt DBTweet]
 defaultTweetSelectOpt = [Desc DBTweetCreatedAt]
 
+-- | An function that filters out 'Tweet's are not mentioning given User
 filterUnMentionedTweet :: DBUserId -> [Tweet] -> [Tweet]
 filterUnMentionedTweet _ [] = []
 filterUnMentionedTweet userid (x:xs)
@@ -61,11 +78,12 @@ filterUnMentionedTweet userid (x:xs)
         <> filterUnMentionedTweet userid xs
     | otherwise = filterUnMentionedTweet userid xs
 
--- | This is pure, we can test this!
+-- | Filter tweets by 'DBUserId'
+-- This is pure, we can test this!
 filterTweets :: DBUserId -> Tweet -> Tweet
 filterTweets userid tweet = tweet & tReplies %~ filterUnMentionedTweet userid
 
--- | Get max number of an given Tweet
+-- | Get max number of something with given 'Tweet'
 getMostRecentBy :: (Ord a) => (Tweet -> a) -> Tweet -> (a, Tweet)
 getMostRecentBy getter tweet =
     let currentSomething = getter tweet
@@ -75,7 +93,7 @@ getMostRecentBy getter tweet =
 
     in (maxSomething, tweet)
 
--- | Sort list of tweets with given getter a
+-- | Sort list of tweets with given getter @a@
 -- This is polymorphic meaning we can sort the list with any given getter as long as it has
 -- Ord instance
 -- So many maps being used so I've assume efficiency is not great
@@ -88,15 +106,15 @@ sortTweetsBy getter ts =
         sortedTweets         = sortBy (flip (\(aId, _) (bId, _) -> aId `compare` bId)) tweetsWithIds
     in map snd sortedTweets
 
--- | Sort list of tweets with field "tCreatedAt"
+-- | Sort list of tweets with field 'tCreatedAt'
 sortTweetsByCreatedAt :: [Tweet] -> Sorted [Tweet]
 sortTweetsByCreatedAt = Sorted . sortTweetsBy (^. tCreatedAt)
 
--- | Sort an given tweet
+-- | Sort an given 'Tweet'
 sortTweetByCreatedAt :: Tweet -> Sorted Tweet
 sortTweetByCreatedAt t = Sorted (t & tReplies %~ sortTweetsBy (^. tCreatedAt))
 
--- | Check if the tweet is sorted with given getter
+-- | Check if the given list of 'Tweet's are sorted with given getter
 isTweetSorted :: (Ord a) => (Tweet -> a) -> [Tweet] -> Bool
 isTweetSorted _       []      = True
 isTweetSorted getter [x]      = isTweetSorted getter (x ^. tReplies)
@@ -109,7 +127,7 @@ isTweetSorted getter (a:b:ts) =
 -- SQL Logic
 --------------------------------------------------------------------------------
 
--- | Convert DBTweet record into Tweet type
+-- | Convert 'DBTweet' record into 'Tweet' type
 dbTweetToTweet :: Bool -> DBUserId -> Entity DBTweet -> SqlPersistM Tweet
 dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
     eReplyList <- selectList [ReplyParent ==. tid] [Asc ReplyCreatedAt]
@@ -133,9 +151,11 @@ dbTweetToTweet shouldGetReplies userid (Entity tid dbt) = do
                     }
             return $ filterTweets userid tweet
 
+-- | Convert list of 'DBTweet' into 'Tweet'
 dbTweetsToTweets :: Bool -> DBUserId -> [Entity DBTweet] -> SqlPersistM [Tweet]
 dbTweetsToTweets shouldGetReplies userid = mapM (dbTweetToTweet shouldGetReplies userid)
 
+-- | Fetch list of 'Mentions' from database
 getMentionList :: DBTweetId -> SqlPersistM [Mention]
 getMentionList tid = do
     -- Get list of mentioned user's keys
@@ -147,7 +167,7 @@ getMentionList tid = do
             ) (M.toList mentionedUsers)
     return mentionList
 
--- | Fetch DBTweet with it's id and convert into Tweet type
+-- | Fetch 'DBTweet' with it's id and convert into 'Tweet' type
 getTweetByIdDB :: Bool -> DBUserId -> DBTweetId -> SqlPersistM Tweet
 getTweetByIdDB shouldGetReplies userid tweetNum = do
     mTweet <- getEntity tweetNum
@@ -155,11 +175,11 @@ getTweetByIdDB shouldGetReplies userid tweetNum = do
         Nothing    -> throwM $ TweetNotFound tweetNum
         Just tweet -> dbTweetToTweet shouldGetReplies userid tweet
 
--- | Fetch tweet with given Id
+-- | Fetch tweet with given 'DBUserId'
 getTweetsByIdDB :: Bool -> DBUserId -> [DBTweetId] -> SqlPersistM [Tweet]
 getTweetsByIdDB shouldGetReplies userid = mapM (getTweetByIdDB shouldGetReplies userid)
 
--- | Query user by it's name
+-- | Query user by 'UserName'
 getUserByNameDB :: UserName -> SqlPersistM (Entity DBUser)
 getUserByNameDB name = do
     let username = getUserName name
@@ -168,6 +188,7 @@ getUserByNameDB name = do
         Nothing    -> throwM $ UserNotFound name
         Just eUser -> return eUser
 
+-- | Convert given 'DBUser' into 'User' type
 dbUserToUser :: Entity DBUser -> SqlPersistM User
 dbUserToUser (Entity uid dbuser) = do
     userTweets <- selectList [DBTweetAuthorId ==. uid] defaultTweetSelectOpt
@@ -186,7 +207,7 @@ dbUserToUser (Entity uid dbuser) = do
 -- IO Logic
 --------------------------------------------------------------------------------
 
--- | Get tweets with username
+-- | Fetch list of 'Tweet's with given 'Username'
 getTweetsByUser :: UserName -> RIO Env (Sorted [Tweet])
 getTweetsByUser username = do
     logInfo $ "Fetching tweets of an username " <> displayShow (getUserName username)
@@ -203,7 +224,7 @@ getTweetsByUser username = do
                 dbTweetsToTweets True userId dbts
     return $ sortTweetsByCreatedAt tweets
 
--- | Get tweet by its Id
+-- | Fetch 'Tweet' of an given 'DBTweetId' as well as tweets that are related to it
 getTweetById :: DBTweetId -> RIO Env (Sorted Tweet)
 getTweetById tweetId = do
     logInfo $ "Fetching tweet with an id of " <> displayShow (fromSqlKey tweetId)
@@ -222,7 +243,7 @@ getTweetById tweetId = do
             Nothing !? e = ContT $ const e
             Just a  !? _    = ContT ($ a)
 
--- | Get user by name
+-- | Fetch user profile with given 'UserName'
 getUserByName :: UserName -> RIO Env User
 getUserByName userName = do
     logInfo $ "Fetching user profile: " <> displayShow (getUserName userName)
@@ -230,9 +251,10 @@ getUserByName userName = do
         eDBUser <- getUserByNameDB userName
         dbUserToUser eDBUser
 
--- | Insert a tweet
--- Perhaps replace userName with userId?
--- Needs validation on TweetText
+-- | Insert an 'Tweet'
+-- Perhaps replace 'UserName' with userId?
+-- 
+-- (TODO): Add validation on 'TweetText'
 insertTweet :: UserName
             -> TweetText
             -> Maybe DBTweetId
@@ -270,7 +292,7 @@ insertTweet postUser content mReplyTo mentions = do
 
         sortTweetByCreatedAt <$> dbTweetToTweet True (entityKey ePostUser) edbt
 
--- | Insert an user with given name
+-- | Insert an user with given 'UserName'
 insertUser :: UserName -> RIO Env User
 insertUser name = do
     logInfo $ "Inserting user " <> displayShow (getUserName name)
@@ -291,7 +313,7 @@ insertUser name = do
 -- Generator related
 --------------------------------------------------------------------------------
 
--- | Get most recent tweetId
+-- | Get most recent 'TweetId'
 getLatestTweetId :: RIO Env (Maybe DBTweetId)
 getLatestTweetId = do
     logInfo "Fetching latest tweetId"
@@ -299,7 +321,7 @@ getLatestTweetId = do
         mTweet <- selectFirst [] [Desc DBTweetCreatedAt]
         return $ entityKey <$> mTweet
 
--- | Get user ids
+-- | Return list of 'UserName' available on database
 getUserLists :: RIO Env [(DBUserId, UserName)]
 getUserLists = do
     logInfo "Fetching list of users"
@@ -310,6 +332,7 @@ getUserLists = do
                 userLists
         return userIdWithNames
 
+-- | Utility function for running database operation with given 'Env'
 runWithPool :: SqlPersistM a -> RIO Env a
 runWithPool action = do
     pool <- envPool <$> ask

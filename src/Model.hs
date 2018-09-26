@@ -7,6 +7,18 @@
 -- Warning regarding Orphan instance is too annoying
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-|
+Module      : Model
+Description : Defines datatype used within an application
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module defines datatypes that are used within an application.
+-}
+
 module Model where
 
 import           RIO                         hiding ((^.))
@@ -264,10 +276,9 @@ instance Validate UserName where
     validate = validateUserName
 
 instance Validate TweetText where
-    validate = validateContent
+    validate = validateTweet
 
--- Maybe access database?
--- Nahhh valid username and name already existing on db is different problem
+-- | Validation of an username with given configuration
 validateUserName :: Config -> UserName -> Either ValidationException UserName
 validateUserName cfg userName = do
     let name = getUserName userName
@@ -289,8 +300,9 @@ validateUserName cfg userName = do
             then return name
             else Left $ InvalidCharacters name
 
-validateContent :: Config -> TweetText -> Either ValidationException TweetText
-validateContent cfg ccc = do
+-- | Validation of an tweet with given config'
+validateTweet :: Config -> TweetText -> Either ValidationException TweetText
+validateTweet cfg ccc = do
     let cc = getTweetText ccc
     TweetText <$> (isValidContentLength cc >>= isNonEmptyTweet)
   where
@@ -305,6 +317,7 @@ validateContent cfg ccc = do
             then return c
             else Left EmptyTweet
 
+-- | Exceptions that can occur upon various validation
 data ValidationException =
       UserNameTooShort Int
     -- ^ Exception for username being too short
