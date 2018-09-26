@@ -1,5 +1,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Lib
+Description : Module defining business logic
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This modules defines business logics used for fetching/inserting data.
+-}
+
 module Lib
     ( getTweetsByUser
     , getTweetById
@@ -44,6 +56,7 @@ import           Configuration               (Env(..))
 -- Polishing logics (sort, filter)
 --------------------------------------------------------------------------------
 
+-- | Newtype wrapper to indicate that the given datatype is sorted
 newtype Sorted a = Sorted {getSorted :: a}
 
 instance (ToJSON a) => ToJSON (Sorted a) where

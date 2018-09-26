@@ -1,3 +1,15 @@
+{-|
+Module      : Util
+Description : Collection of utility functions
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module contains utility functions that are useful.
+-}
+
 module Util
     ( safeHead
     , whenJust

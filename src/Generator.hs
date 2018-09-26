@@ -1,6 +1,18 @@
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+{-|
+Module      : Generator
+Description : Generator used to generate random users/tweets
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This modules is used to generate random data and insert them into the database.
+This is useful to test the endpoints.
+-}
 
 module Generator
     ( insertRandomDataIntoEmptyDB
@@ -92,7 +104,11 @@ replyRandomTweet = do
             let postUser = randomReply ^. tAuthor
             let mentionedUserIds = map fst mentionedUsers
             ignoreException $
-                void $ insertTweet postUser (TweetText content) (Just $ toSqlKey randomId) mentionedUserIds
+                void $ insertTweet 
+                       postUser 
+                       (TweetText content) 
+                       (Just $ toSqlKey randomId)
+                       mentionedUserIds
 
 -- | Generate random tweet with no replies and parentId
 mkRandomTweet :: Gen Tweet

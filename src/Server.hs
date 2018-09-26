@@ -1,6 +1,17 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Server
+Description : Defines endpoint logics
+Copyright   : (c) Hiroto Shioi, 2018
+License     : GPL-3
+Maintainer  : shioihigg@email.com
+Stability   : experimental
+Portability : POSIX
+
+This module defines endpoint logics of an application.
+-}
 
 module Server
     ( runTwitterServer
