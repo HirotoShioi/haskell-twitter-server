@@ -48,7 +48,7 @@ import           Model                       (Tweet (..), TweetText (..),
 -- | Tweet type
 data TweetType =  Normal | Response
 
--- | Insert random tweets into the database
+-- | Insert given number of random 'Tweet' into the database
 tweetRandomly :: Int -> RIO Env ()
 tweetRandomly num = do
      randomList <- liftIO $ generate $ vectorOf num (elements [Normal, Response])
@@ -57,7 +57,7 @@ tweetRandomly num = do
         Normal   -> insertRandomTweet
         Response -> replyRandomTweet
 
--- | Insert random tweet
+-- | Insert random 'Tweet'
 insertRandomTweet :: RIO Env ()
 insertRandomTweet = do
     randomTweet <- liftIO $ generate mkRandomTweet
@@ -65,8 +65,7 @@ insertRandomTweet = do
         content  = randomTweet ^. tText
     ignoreException $ void $ insertTweet userName content Nothing []
 
--- | Reply to random tweet
--- Write better reply (add @Mention)
+-- | Reply to random 'Tweet'
 replyRandomTweet :: RIO Env ()
 replyRandomTweet = do
     -- Need to fetch random tweet
@@ -110,7 +109,7 @@ replyRandomTweet = do
                        (Just $ toSqlKey randomId)
                        mentionedUserIds
 
--- | Generate random tweet with no replies and parentId
+-- | Generate random 'Tweet' with no replies and parentId
 mkRandomTweet :: Gen Tweet
 mkRandomTweet = do
     randomTweet <- arbitrary :: Gen Tweet
@@ -119,7 +118,7 @@ mkRandomTweet = do
         & tReplies .~ []
         & tMentions .~ []
 
--- | Insert Users into given databse
+-- | Insert list of 'User' into given database
 insertUsers :: [UserName] -> RIO Env ()
 insertUsers users = do
     pool <- envPool <$> ask
@@ -142,16 +141,17 @@ ignoreException action = catches action
         say $ tshow e
         return ()
 
--- | Insert given number of random tweets as well userdata to the database
+-- | Insert given number of random 'Tweet' as well userdata to the database
 --
--- If true, it'll insert user data as well.
+-- If true, it'll insert 'User' data as well.
 insertRandomDataIntoEmptyDB :: Bool -> Int -> IO ()
 insertRandomDataIntoEmptyDB shouldInsertUsers numOfTweets = do
-    envConfig <- defaultConfig
-    envPool   <- liftIO $ runNoLoggingT $ createPostgresqlPool (cfgConnectionString envConfig) 5
-    logOpts   <- logOptionsHandle stdout False
-    liftIO $ withLogFunc logOpts $ \envLogFunc -> do
-        let env = Env envLogFunc envConfig envPool
+    config  <- defaultConfig
+    pool    <- liftIO $ runNoLoggingT $ createPostgresqlPool (cfgConnectionString config) 5
+    logOpts <- logOptionsHandle stdout False
+
+    liftIO $ withLogFunc logOpts $ \logfunc -> do
+        let env = Env logfunc config pool
 
         when shouldInsertUsers $ runRIO env (insertUsers testUserList)
 
